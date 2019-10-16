@@ -1,5 +1,4 @@
-#ifndef G1
-#define G1
+#pragma once
 
 #include "stdint.h"
 #include "stdlib.h"
@@ -592,7 +591,7 @@ inline void batch_normalize(element *points, size_t num_points)
         *
         * At the second iteration, accumulator * temporaries[2] = z.data[0]*z.data[1] / z.data[0]*z.data[1]*z.data[2] = (1 / z.data[2])
         * And so on, until we have computed every z-inverse!
-        * 
+        *
         * We can then convert out of Jacobian form (x = X / Z^2, y = Y / Z^3) with 4 muls and 1 square.
         **/
     for (size_t i = num_points - 1; i < num_points; --i)
@@ -685,7 +684,7 @@ inline void copy_affine(const affine_element &a, affine_element &r)
     fq::copy(a.y, r.y);
 }
 
-inline element group_exponentiation_inner(const affine_element &a, const fr::field_t &scalar)
+inline element group_exponentiation(const element &a, const fr::field_t &scalar)
 {
     fr::field_t converted_scalar;
 
@@ -700,10 +699,7 @@ inline element group_exponentiation_inner(const affine_element &a, const fr::fie
         set_infinity(result);
         return result;
     }
-    element work_element;
-    element point;
-    affine_to_jacobian(a, work_element);
-    affine_to_jacobian(a, point);
+    element work_element = a;
     // TODO ADD BACK IN!
     // fr::copy(scalar, converted_scalar);
     bool scalar_bits[256] = {0};
@@ -728,11 +724,18 @@ inline element group_exponentiation_inner(const affine_element &a, const fr::fie
         dbl(work_element, work_element);
         if (scalar_bits[i] == true)
         {
-            add(work_element, point, work_element);
+            add(work_element, const_cast<element &>(a), work_element);
         }
     }
 
     return work_element;
+}
+
+inline element group_exponentiation_inner(const affine_element &a, const fr::field_t &scalar)
+{
+    element point;
+    affine_to_jacobian(a, point);
+    return group_exponentiation(point, scalar);
 }
 
 inline affine_element group_exponentiation(const affine_element &a, const fr::field_t &scalar)
@@ -792,5 +795,3 @@ inline bool eq(const affine_element &a, const affine_element &b)
 
 } // namespace g1
 } // namespace barretenberg
-
-#endif
