@@ -2,6 +2,7 @@
 
 #include <numeric>
 #include <vector>
+#include <cmath>
 
 #include "../../../assert.hpp"
 #include "../../../curves/bn254/fr.hpp"
