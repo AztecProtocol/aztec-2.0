@@ -52,7 +52,7 @@ namespace scalar_multiplication {
     accumulator_it -= offset_a;                                                                                        \
     schedule_it -= offset_b
 
-#define BBERG_FETCH_FORWARD_BLOCK(offset_a)                                                                              \
+#define BBERG_FETCH_FORWARD_BLOCK(offset_a)                                                                            \
     __builtin_prefetch(output_points + current_offset + offset_a);                                                     \
     __builtin_prefetch(output_points + current_offset - current_delta + offset_a);                                     \
     __builtin_prefetch(accumulators + accumulator_it + offset_a);
@@ -876,8 +876,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 switch (k_end) {
                 case 8: {
                     {
-                        BBERG_FETCH_BLOCK(2, 3, 1);
                         BBERG_FETCH_BLOCK(4, 5, 2);
+                        BBERG_FETCH_BLOCK(6, 7, 3);
                     }
                     {
                         BBERG_BLOCK_A(1, 0, 0);
@@ -885,8 +885,9 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     {
                         BBERG_BLOCK_A(3, 2, 1);
                     }
-                        BBERG_FETCH_BLOCK(6, 7, 3);
-                        BBERG_FETCH_BLOCK(8, 9, 4);
+                    BBERG_FETCH_BLOCK(8, 9, 4);
+                    BBERG_FETCH_BLOCK(10, 11, 5);
+
                     {
                         BBERG_BLOCK_A(5, 4, 2);
                     }
@@ -950,8 +951,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_BLOCK_A(3, 2, 1U);
                         }
-                            BBERG_FETCH_BLOCK(8, 9, 4);
-                            BBERG_FETCH_BLOCK(10, 11, 5);
+                        BBERG_FETCH_BLOCK(8, 9, 4);
+                        BBERG_FETCH_BLOCK(10, 11, 5);
 
                         {
                             BBERG_BLOCK_A(5, 4, 2U);
@@ -959,8 +960,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_BLOCK_A(7, 6, 3U);
                         }
-                            BBERG_FETCH_BLOCK(12, 13, 6);
-                            BBERG_FETCH_BLOCK(14, 15, 7);
+                        BBERG_FETCH_BLOCK(12, 13, 6);
+                        BBERG_FETCH_BLOCK(14, 15, 7);
 
                         {
                             BBERG_BLOCK_A(9, 8, 4U);
@@ -968,8 +969,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_BLOCK_A(11, 10, 5U);
                         }
-                            BBERG_FETCH_BLOCK(16, 17, 8);
-                            BBERG_FETCH_BLOCK(18, 19, 9);
+                        BBERG_FETCH_BLOCK(16, 17, 8);
+                        BBERG_FETCH_BLOCK(18, 19, 9);
                         {
                             BBERG_BLOCK_A(13, 12, 6U);
                         }
@@ -1003,10 +1004,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 // printf("k_end = %lu\n", k_end);
                 switch (k_end) {
                 case 8: {
-                    BBERG_FETCH_FORWARD_BLOCK(1);
                     BBERG_FETCH_FORWARD_BLOCK(2);
                     BBERG_FETCH_FORWARD_BLOCK(3);
-                    BBERG_FETCH_FORWARD_BLOCK(4);
 
                     {
                         BBERG_FORWARD_BLOCK_A(0);
@@ -1014,6 +1013,9 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     {
                         BBERG_FORWARD_BLOCK_A(1);
                     }
+                    BBERG_FETCH_FORWARD_BLOCK(4);
+                    BBERG_FETCH_FORWARD_BLOCK(5);
+
                     {
                         BBERG_FORWARD_BLOCK_A(2);
                     }
@@ -1024,8 +1026,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     break;
                 }
                 case 4: {
-                    BBERG_FETCH_FORWARD_BLOCK(1);
                     BBERG_FETCH_FORWARD_BLOCK(2);
+                    BBERG_FETCH_FORWARD_BLOCK(3);
 
                     {
                         BBERG_FORWARD_BLOCK_A(0);
@@ -1037,7 +1039,7 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     break;
                 }
                 case 2: {
-                    BBERG_FETCH_FORWARD_BLOCK(1);
+                    BBERG_FETCH_FORWARD_BLOCK(2);
                     BBERG_FORWARD_BLOCK_A(0);
                     BBERG_FORWARD_BLOCK_B(1);
                     break;
@@ -1057,14 +1059,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 default: {
                     for (size_t k = 0; k < k_end; k += 16) {
                         {
-                            BBERG_FETCH_FORWARD_BLOCK(1);
                             BBERG_FETCH_FORWARD_BLOCK(2);
                             BBERG_FETCH_FORWARD_BLOCK(3);
-                            BBERG_FETCH_FORWARD_BLOCK(4);
-                            BBERG_FETCH_FORWARD_BLOCK(5);
-                            BBERG_FETCH_FORWARD_BLOCK(6);
-                            BBERG_FETCH_FORWARD_BLOCK(7);
-                            BBERG_FETCH_FORWARD_BLOCK(8);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(0);
@@ -1072,18 +1068,27 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_FORWARD_BLOCK_A(1);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(4);
+                        BBERG_FETCH_FORWARD_BLOCK(5);
+
                         {
                             BBERG_FORWARD_BLOCK_A(2);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(3);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(6);
+                        BBERG_FETCH_FORWARD_BLOCK(7);
+
                         {
                             BBERG_FORWARD_BLOCK_A(4);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(5);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(8);
+                        BBERG_FETCH_FORWARD_BLOCK(9);
+
                         {
                             BBERG_FORWARD_BLOCK_A(6);
                         }
@@ -1134,10 +1139,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 switch (k_end) {
                 case 8: {
                     {
-                        BBERG_FETCH_LINEAR_BLOCK(2, 3, 1);
                         BBERG_FETCH_LINEAR_BLOCK(4, 5, 2);
                         BBERG_FETCH_LINEAR_BLOCK(6, 7, 3);
-                        BBERG_FETCH_LINEAR_BLOCK(8, 9, 4);
                     }
                     {
                         BBERG_BLOCK_C(1, 0, 0, 0);
@@ -1145,6 +1148,9 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     {
                         BBERG_BLOCK_C(3, 2, 1, 2);
                     }
+                    BBERG_FETCH_LINEAR_BLOCK(8, 9, 4);
+                    BBERG_FETCH_LINEAR_BLOCK(10, 11, 5);
+
                     {
                         BBERG_BLOCK_C(5, 4, 2, 4);
                     }
@@ -1158,8 +1164,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 }
                 case 4: {
                     {
-                        BBERG_FETCH_LINEAR_BLOCK(2, 3, 1);
                         BBERG_FETCH_LINEAR_BLOCK(4, 5, 2);
+                        BBERG_FETCH_LINEAR_BLOCK(6, 7, 3);
                     }
                     {
                         BBERG_BLOCK_C(1, 0, 0, 0);
@@ -1174,7 +1180,7 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 }
                 case 2: {
                     {
-                        BBERG_FETCH_LINEAR_BLOCK(2, 3, 1);
+                        BBERG_FETCH_LINEAR_BLOCK(4, 5, 2);
                         BBERG_BLOCK_C(1, 0, 0, 0);
                         BBERG_BLOCK_B(1, 2);
                     }
@@ -1197,14 +1203,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 default: {
                     for (size_t k = 0; k < k_end; k += 16) {
                         {
-                            BBERG_FETCH_LINEAR_BLOCK(2, 3, 1);
                             BBERG_FETCH_LINEAR_BLOCK(4, 5, 2);
                             BBERG_FETCH_LINEAR_BLOCK(6, 7, 3);
-                            BBERG_FETCH_LINEAR_BLOCK(8, 9, 4);
-                            BBERG_FETCH_LINEAR_BLOCK(10, 11, 5);
-                            BBERG_FETCH_LINEAR_BLOCK(12, 13, 6);
-                            BBERG_FETCH_LINEAR_BLOCK(14, 15, 8);
-                            BBERG_FETCH_LINEAR_BLOCK(16, 17, 7);
                         }
                         {
                             BBERG_BLOCK_C(1, 0, 0U, 0);
@@ -1212,18 +1212,27 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_BLOCK_C(3, 2, 1U, 2);
                         }
+                        BBERG_FETCH_LINEAR_BLOCK(8, 9, 4);
+                        BBERG_FETCH_LINEAR_BLOCK(10, 11, 5);
+
                         {
                             BBERG_BLOCK_C(5, 4, 2U, 4);
                         }
                         {
                             BBERG_BLOCK_C(7, 6, 3U, 6);
                         }
+                        BBERG_FETCH_LINEAR_BLOCK(12, 13, 6);
+                        BBERG_FETCH_LINEAR_BLOCK(14, 15, 7);
+
                         {
                             BBERG_BLOCK_C(9, 8, 4U, 8);
                         }
                         {
                             BBERG_BLOCK_C(11, 10, 5U, 10);
                         }
+                        BBERG_FETCH_LINEAR_BLOCK(16, 17, 8);
+                        BBERG_FETCH_LINEAR_BLOCK(16, 17, 9);
+
                         {
                             BBERG_BLOCK_C(13, 12, 6U, 12);
                         }
@@ -1260,8 +1269,6 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     {
                         BBERG_FETCH_FORWARD_BLOCK(1);
                         BBERG_FETCH_FORWARD_BLOCK(2);
-                        BBERG_FETCH_FORWARD_BLOCK(3);
-                        BBERG_FETCH_FORWARD_BLOCK(4);
                     }
                     {
                         BBERG_FORWARD_BLOCK_A(0);
@@ -1269,6 +1276,9 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                     {
                         BBERG_FORWARD_BLOCK_A(1);
                     }
+                    BBERG_FETCH_FORWARD_BLOCK(3);
+                    BBERG_FETCH_FORWARD_BLOCK(4);
+
                     {
                         BBERG_FORWARD_BLOCK_A(2);
                     }
@@ -1313,14 +1323,8 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                 default: {
                     for (size_t k = 0; k < k_end; k += 16) {
                         {
-                            BBERG_FETCH_FORWARD_BLOCK(1);
                             BBERG_FETCH_FORWARD_BLOCK(2);
                             BBERG_FETCH_FORWARD_BLOCK(3);
-                            BBERG_FETCH_FORWARD_BLOCK(4);
-                            BBERG_FETCH_FORWARD_BLOCK(5);
-                            BBERG_FETCH_FORWARD_BLOCK(6);
-                            BBERG_FETCH_FORWARD_BLOCK(7);
-                            BBERG_FETCH_FORWARD_BLOCK(8);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(0);
@@ -1328,18 +1332,26 @@ g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_s
                         {
                             BBERG_FORWARD_BLOCK_A(1);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(4);
+                        BBERG_FETCH_FORWARD_BLOCK(5);
                         {
                             BBERG_FORWARD_BLOCK_A(2);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(3);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(6);
+                        BBERG_FETCH_FORWARD_BLOCK(7);
+
                         {
                             BBERG_FORWARD_BLOCK_A(4);
                         }
                         {
                             BBERG_FORWARD_BLOCK_A(5);
                         }
+                        BBERG_FETCH_FORWARD_BLOCK(8);
+                        BBERG_FETCH_FORWARD_BLOCK(9);
+
                         {
                             BBERG_FORWARD_BLOCK_A(6);
                         }
