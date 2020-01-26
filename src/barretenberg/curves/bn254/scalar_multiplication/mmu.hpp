@@ -7,10 +7,17 @@ namespace barretenberg
 // simple helper functions to retrieve pointers to pre-allocated memory for the scalar multiplication algorithm.
 // This is to eliminate page faults when allocating (and writing) to large tranches of memory.
 namespace scalar_multiplication {
-struct affine_product_runtime_state {
+
+struct accumulator_temporary {
+    // fq::field_t temporaries[3];
+    g1::affine_element p1;
+    fq::field_t x2_plus_x1;
+};
+struct old_affine_product_runtime_state {
     g1::affine_element* points;
     g1::affine_element* point_pairs_1;
     g1::affine_element* point_pairs_2;
+    accumulator_temporary* accumulators;
     fq::field_t* scratch_space;
     uint32_t* bucket_counts;
     uint32_t* bit_offsets;
@@ -19,6 +26,19 @@ struct affine_product_runtime_state {
     uint32_t num_buckets;
     bool* bucket_empty_status;
 };
+
+struct affine_product_runtime_state {
+    g1::affine_element* points;
+    g1::affine_element* output;
+    accumulator_temporary* accumulators;
+    uint32_t* bucket_counts;
+    uint32_t* bit_offsets;
+    uint64_t* point_schedule;
+    uint32_t num_points;
+    uint32_t num_buckets;
+    bool* bucket_empty_status;
+};
+
 
 } // namespace scalar_multiplication
 namespace mmu

@@ -54,7 +54,7 @@ public:
 
     size_t zero_idx;
 
-    // these are variables that we have used a gate on, to enforce that they are equal to a defined value
+    // these are wires values that must be equal to a defined value
     std::map<barretenberg::fr::field_t, uint32_t> constant_variables;
 
     std::vector<barretenberg::fr::field_t> q_m;

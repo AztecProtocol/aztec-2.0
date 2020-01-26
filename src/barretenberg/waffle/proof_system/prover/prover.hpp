@@ -14,6 +14,12 @@
 
 namespace waffle
 {
+struct program_settings
+{
+    size_t program_width;
+    uint64_t wire_settings;
+    bool uses_quotient_mid;
+};
 
 template <size_t program_width>
 class ProverBase
@@ -71,6 +77,9 @@ class ProverBase
 
 typedef ProverBase<3> Prover;
 typedef ProverBase<4> TurboProver;
+// typedef ProverBase<{ 3, 0b0000, true}> Prover;
+// typedef ProverBase<{ 3, 0b0100, true}> ExtendedProver;
+// typedef ProverBase<{ 4, 0b1111, false}> TurboProver;
 
 } // namespace waffle
 

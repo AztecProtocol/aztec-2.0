@@ -125,6 +125,8 @@ inline void copy_pairwise_points(uint64_t* point_schedule, g1::affine_element* p
 
 uint32_t construct_addition_chains(affine_product_runtime_state& state, bool empty_bucket_counts = true);
 
+g1::affine_element* construct_addition_chains_alternate(affine_product_runtime_state& state, bool empty_bucket_counts = true);
+
 void add_affine_points(g1::affine_element* points, const size_t num_points, fq::field_t* scratch_space);
 
 void evaluate_addition_chains(affine_product_runtime_state& state, const size_t max_bucket_bits);

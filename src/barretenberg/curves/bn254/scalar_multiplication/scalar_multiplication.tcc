@@ -22,23 +22,7 @@ namespace barretenberg {
 namespace scalar_multiplication {
 namespace internal {
 // from http://supertech.csail.mit.edu/papers/debruijn.pdf
-constexpr size_t get_msb(const uint32_t v)
-{
-    constexpr uint32_t MultiplyDeBruijnBitPosition[32] = {
-        0, 9,  1,  10, 13, 21, 2,  29, 11, 14, 16, 18, 22, 25, 3, 30,
-        8, 12, 20, 28, 15, 17, 24, 7,  19, 27, 23, 6,  26, 5,  4, 31
-    };
-
-    const uint32_t v1 = v | (v >> 1); // v |= v >> 1; // first round down to one less than a power of 2
-    const uint32_t v2 = v1 | (v1 >> 2);
-    const uint32_t v3 = v2 | (v2 >> 4);
-    const uint32_t v4 = v3 | (v3 >> 8);
-    const uint32_t v5 = v4 | (v4 >> 16);
-
-    return MultiplyDeBruijnBitPosition[static_cast<uint32_t>(v5 * static_cast<uint32_t>(0x07C4ACDD)) >>
-                                       static_cast<uint32_t>(27)];
-}
-constexpr uint32_t get_msb_32(const uint32_t v)
+constexpr uint32_t get_msb(const uint32_t v)
 {
     constexpr uint32_t MultiplyDeBruijnBitPosition[32] = {
         0, 9,  1,  10, 13, 21, 2,  29, 11, 14, 16, 18, 22, 25, 3, 30,
@@ -208,7 +192,7 @@ inline void compute_wnaf_states(multiplication_runtime_state& state, fr::field_t
     constexpr size_t num_points = num_initial_points * 2;
     constexpr size_t num_rounds = get_num_rounds(num_points);
     constexpr size_t bits_per_bucket = get_optimal_bucket_width(num_initial_points);
-    constexpr size_t log2_num_points = static_cast<uint64_t>(internal::get_msb(static_cast<uint32_t>(num_points)));
+    constexpr size_t log2_num_points = static_cast<size_t>(internal::get_msb(static_cast<uint32_t>(num_points)));
 
     // fetch our wnaf table and skew table pointers from pre-allocated memory. This eliminates soft page faults when
     // writing to newly allocated memory. The page faults were adding up to 200 milliseconds onto the runtime of our

@@ -12,6 +12,7 @@ static fq::field_t* scratch_space = nullptr;
 static uint32_t* bucket_count_memory = nullptr;
 static uint32_t* bit_count_memory = nullptr;
 static bool* bucket_empty_status = nullptr;
+static scalar_multiplication::accumulator_temporary* accumulators = nullptr;
 
 const auto init = []() {
     printf("init...\n");
@@ -38,6 +39,7 @@ const auto init = []() {
     point_pairs_1 = (g1::affine_element*)(aligned_alloc(64, (max_num_points * 2) * sizeof(g1::affine_element)));
     point_pairs_2 = (g1::affine_element*)(aligned_alloc(64, (max_num_points * 2) * sizeof(g1::affine_element)));
     scratch_space = (fq::field_t*)(aligned_alloc(64, (max_num_points) * sizeof(fq::field_t)));
+    accumulators = (scalar_multiplication::accumulator_temporary*)(aligned_alloc(64, (max_num_points * 2) * sizeof(scalar_multiplication::accumulator_temporary)));
 
     bucket_count_memory = (uint32_t*)(aligned_alloc(64, max_num_points * 2 * sizeof(uint32_t)));
     bit_count_memory = (uint32_t*)(aligned_alloc(64, max_num_points * 2 * sizeof(uint32_t)));
@@ -50,6 +52,7 @@ const auto init = []() {
     memset((g1::affine_element*)point_pairs_1, 0xff, (max_num_points * 2) * sizeof(g1::affine_element));
     memset((g1::affine_element*)point_pairs_2, 0xff, (max_buckets + thread_overspill * 4) * sizeof(g1::affine_element));
     memset((fq::field_t*)scratch_space, 0xff, (max_num_points) * sizeof(fq::field_t));
+    memset((scalar_multiplication::accumulator_temporary*)accumulators, 0xff, (max_num_points * 2) * sizeof(scalar_multiplication::accumulator_temporary));
 
     memset((void*)bucket_count_memory, 0x00, max_num_points * 2 * sizeof(uint32_t));
     memset((void*)bit_count_memory, 0x00, max_num_points * 2 * sizeof(uint32_t));
@@ -81,12 +84,13 @@ scalar_multiplication::affine_product_runtime_state get_affine_product_runtime_s
 
     scalar_multiplication::affine_product_runtime_state product_state;
 
-    product_state.point_pairs_1 = point_pairs_1 + (thread_index * points_per_thread);
-    product_state.point_pairs_2 = point_pairs_2 + (thread_index * points_per_thread);
-    product_state.scratch_space = scratch_space + (thread_index * (points_per_thread / 2));
+    product_state.output = point_pairs_1 + (thread_index * points_per_thread);
+    // product_state.point_pairs_2 = point_pairs_2 + (thread_index * points_per_thread);
+    // product_state.scratch_space = scratch_space + (thread_index * (points_per_thread / 2));
     product_state.bucket_counts = bucket_count_memory + (thread_index * (points_per_thread));
     product_state.bit_offsets = bit_count_memory + (thread_index * (points_per_thread));
     product_state.bucket_empty_status = bucket_empty_status + (thread_index * (points_per_thread));
+    product_state.accumulators = accumulators + (thread_index * points_per_thread);
     return product_state;
 }
 } // namespace mmu
