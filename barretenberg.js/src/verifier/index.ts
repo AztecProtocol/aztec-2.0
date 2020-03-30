@@ -1,21 +1,22 @@
-import { BarretenbergWasm } from '../../src/wasm';
 import PolynomialEvalUtils from './PolynomialEvalUtils';
+import decodeProof from '../decoder';
+
 
 export class Verifier extends PolynomialEvalUtils {
-    constructor(proofData: string) {
-        super();
+  public data !: object;
 
-        this.extractProof(proofData);
-        this.validateInputs(proofData);
-        // const { beta, gamma, alpha, epsilon, v, u } = this.computeChallenges();
-    }
+  constructor(proofData: string) {
+    super();
+    this.data = decodeProof(proofData);
+    // this.extractProof(proofData);
+    // this.validateInputs(proofData);
+    // const { beta, gamma, alpha, epsilon, v, u } = this.computeChallenges();
+  }
 
-    public extractProof(proofData: string) {
-    };
+  public validateInputs(data: string) {}
 
-    public validateInputs(proofData: string) {}
+  public computePolynomialEvaluations() {}
 
-    public computePolynomialEvaluations() {}
+  public verifyProof() {}
 
-    public verifyProof() {}
 }
