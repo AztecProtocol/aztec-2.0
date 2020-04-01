@@ -12,7 +12,6 @@ export default class ProofUtils {
      * @returns {BN} bn.js formatted version of a point on the bn128 curve
      */
     static hexToGroupPoint(xHex, yHex) {
-        console.log({ xHex });
         let x = new BN(xHex, 16);
         let y = new BN(yHex, 16);
         // if (!x.lt(bn128.curve.p)) {
