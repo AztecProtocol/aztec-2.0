@@ -56,4 +56,34 @@ WASM_EXPORT size_t prover_export_proof(waffle::TurboProver* prover, uint8_t** pr
     return proof_data.size();
 }
 
+WASM_EXPORT void standard_prover_execute_preamble_round(waffle::Prover* prover) {
+    prover->execute_preamble_round();
+}
+
+WASM_EXPORT void standard_prover_execute_first_round(waffle::Prover* prover) {
+    prover->execute_first_round();
+}
+
+WASM_EXPORT void standard_prover_execute_second_round(waffle::Prover* prover) {
+    prover->execute_second_round();
+}
+
+WASM_EXPORT void standard_prover_execute_third_round(waffle::Prover* prover) {
+    prover->execute_third_round();
+}
+
+WASM_EXPORT void standard_prover_execute_fourth_round(waffle::Prover* prover) {
+    prover->execute_fourth_round();
+}
+
+WASM_EXPORT void standard_prover_execute_fifth_round(waffle::Prover* prover) {
+    prover->execute_fifth_round();
+}
+
+WASM_EXPORT size_t standard_prover_export_proof(waffle::Prover* prover, uint8_t** proof_data_buf) {
+    auto& proof_data = prover->export_proof().proof_data;
+    *proof_data_buf = proof_data.data();
+    return proof_data.size();
+}
+
 }
