@@ -32,6 +32,25 @@ export class Prover {
     return Buffer.from(await this.wasm.sliceMemory(proofPtr, proofPtr + proofSize));
   }
 
+  public async createStandardProof(proverPtr: number) {
+    const circuitSize = await this.wasm.call("prover_get_circuit_size", proverPtr);
+    await this.wasm.call("standard_prover_execute_preamble_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    await this.wasm.call("standard_prover_execute_first_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    await this.wasm.call("standard_prover_execute_second_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    await this.wasm.call("standard_prover_execute_third_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    await this.wasm.call("standard_prover_execute_fourth_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    await this.wasm.call("standard_prover_execute_fifth_round", proverPtr);
+    await this.processProverQueue(proverPtr, circuitSize);
+    const proofSize = await this.wasm.call("prover_export_proof", proverPtr, 0);
+    const proofPtr = Buffer.from(await this.wasm.sliceMemory(0, 4)).readUInt32LE(0);
+    return Buffer.from(await this.wasm.sliceMemory(proofPtr, proofPtr + proofSize));
+  }
+
   private async processProverQueue(proverPtr: number, circuitSize: number) {
     const jobs = await this.wasm.call("prover_get_num_queued_scalar_multiplications", proverPtr);
     for (let i=0; i<jobs; ++i) {
