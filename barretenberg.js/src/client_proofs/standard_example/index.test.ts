@@ -10,7 +10,7 @@ import createDebug from 'debug';
 
 const debug = createDebug('create_proof');
 
-describe('create_standard_proof', () => {
+describe('create_example_proof', () => {
   let barretenberg!: BarretenbergWorker;
   let createStandardProof!: CreateStandardProof;
   let pippenger!: PooledPippenger;

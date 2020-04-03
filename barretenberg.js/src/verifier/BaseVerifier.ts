@@ -40,14 +40,12 @@ export default class BaseVerifier {
 
     const G1Points: object = this.decodeG1Points(proofData, G1Size, G1Start, G1End);
     const fieldElements: object = this.decodeFieldElements(proofData, fieldElementSize, fieldStart, fieldEnd);
-    const publicInputs: object = this.decodePublicInputs(proofData, publicInputSize, publicStart, publicEnd);
-
-    // const publicInputs: any = 0;
+    const publicInputs: string[] = this.decodePublicInputs(proofData, publicInputSize, publicStart, publicEnd);
 
     const data: object = {
       ...G1Points,
       ...fieldElements,
-      publicInputs,
+      ...publicInputs,
     };
 
     return {
@@ -80,35 +78,43 @@ export default class BaseVerifier {
       'W_w',
     ];
     return this.extractVariables(G1Names, G1Data, G1Size);
-  };
+  }
 
   /**
    * Decode field elements
    */
-  decodeFieldElements(proofData, fieldElementSize, start, end) {
+  decodeFieldElements(proofData: string, fieldElementSize: number, start: number, end: number): object {
     const FieldElementsData: string = proofData.slice(start, end);
     const fieldElementNames: string[] = ['aEval', 'bEval', 'cEval', 's1Eval', 's2Eval', 'rEval', 'zwEval'];
     return this.extractVariables(fieldElementNames, FieldElementsData, fieldElementSize);
-  };
+  }
 
   /**
    * Decode publicInputs
    */
-  decodePublicInputs(proofData, publicInputSize, start, end) {
+  decodePublicInputs(proofData: string, publicInputSize: number, start: number, end: number): string[] {
     const publicInputsData: string = proofData.slice(start, end);
-    const publicInputNames
-    return this.extractVariables(publicInputNames, publicInputData, publicInputSize);
 
-  };
+    const extractData: string[] = [];
+    let dataElementStart: number = 0;
+
+    let currentLocation: number;
+    for (currentLocation = 0; currentLocation < publicInputsData.length; currentLocation += publicInputSize) {
+      extractData.push(publicInputsData.slice(dataElementStart, dataElementStart + currentLocation));
+      dataElementStart += currentLocation;
+    }
+
+    return extractData;
+  }
 
   /**
-   * Extract 
-   * 
+   * Extract
+   *
    * @param names
    * @param data
    * @param elementSize
    */
-  extractVariables(names: string[], data: string, elementSize: number) {
+  extractVariables(names: string[], data: string, elementSize: number): object {
     const extractData: object = {};
 
     names.forEach((name, index) => {
@@ -135,8 +141,9 @@ export default class BaseVerifier {
    * Check that G1Points are on the bn128 curve and field elements are less than the modulus
    * of the field
    */
-  public validateInputs(G1Points: any[], fieldElements: any[]) {
+  public validateInputs(G1Points: any[], fieldElements: any[], publicInputs: string[]) {
     G1Points.forEach(point => ProofUtils.validatePointOnCurve(point));
     fieldElements.forEach(fieldElement => ProofUtils.validateElement(fieldElement));
+    publicInputs.forEach(publicInput => ProofUtils.validateElement(publicInput));
   }
 }

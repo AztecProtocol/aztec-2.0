@@ -1,32 +1,36 @@
-import { BarretenbergWasm } from '../../src/wasm';
-import { CreateProof, Note } from '../client_proofs/create';
+import { BarretenbergWasm } from '../wasm';
 import { Crs } from '../crs';
 import { Schnorr } from '../crypto/schnorr/index';
-import { Verifier } from '../../src/verifier';
-import { dummyProofString, dummyProofBuffer } from '../utils/dummyProof';
+import { fetchCode } from '../wasm';
+import { destroyWorker, createWorker, } from '../wasm/worker_factory';
+import { Verifier } from './index';
+import { dummyProof, dummyProofBuffer } from '../utils/dummyProof';
 
 describe('Verifier', () => {
   let barretenberg!: BarretenbergWasm;
-  let createProof!: CreateProof;
   let schnorr!: Schnorr;
   let verifier!: Verifier;
-  const proofData: string = dummyProofString
+  const proofData: string = dummyProof
 
   beforeAll(async () => {
-    // barretenberg = new BarretenbergWasm();
-    // await barretenberg.init();
+    barretenberg = new BarretenbergWasm();
 
-    // const crs = new Crs(32768);
-    // await crs.download();
+    const code = await fetchCode();
+
+    barretenberg = await createWorker();
+    await barretenberg.init(code);
+
+    const crs = new Crs(32768);
+    await crs.download();
 
     // schnorr = new Schnorr(barretenberg);
     // createProof = new CreateProof(barretenberg);
     // createProof.init(crs);
 
-    verifier = new Verifier(proofData);
+    const verificationKey: any = null;
+    verifier = new Verifier(proofData, verificationKey);
   });
 
-  // won't work, current Barretenberg build is for Turbo Plonk - proof was generated with PLONK
 //   it.skip('should verify proof using Barretenberg', async () => {
 //     const isValid = createProof.verifyProof(dummyProofBuffer);
 //     console.log()
