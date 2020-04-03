@@ -56,6 +56,11 @@ WASM_EXPORT size_t prover_export_proof(waffle::TurboProver* prover, uint8_t** pr
     return proof_data.size();
 }
 
+WASM_EXPORT size_t standard_prover_get_circuit_size(waffle::Prover* prover)
+{
+    return prover->get_circuit_size();
+}
+
 WASM_EXPORT void standard_prover_execute_preamble_round(waffle::Prover* prover) {
     prover->execute_preamble_round();
 }

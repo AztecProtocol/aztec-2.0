@@ -33,7 +33,8 @@ export class Prover {
   }
 
   public async createStandardProof(proverPtr: number) {
-    const circuitSize = await this.wasm.call("prover_get_circuit_size", proverPtr);
+    const circuitSize = await this.wasm.call("standard_prover_get_circuit_size", proverPtr);
+    console.log({ circuitSize });
     await this.wasm.call("standard_prover_execute_preamble_round", proverPtr);
     await this.processProverQueue(proverPtr, circuitSize);
     await this.wasm.call("standard_prover_execute_first_round", proverPtr);

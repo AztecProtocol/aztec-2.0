@@ -35,7 +35,7 @@ MemReferenceString::MemReferenceString(const size_t num_points, char const* buff
     const size_t num_threads = 1;
 #endif
     const size_t prefetch_overflow = 16 * num_threads;
-    monomials = (barretenberg::g1::affine_element*)(aligned_alloc(
+    monomials_ = (barretenberg::g1::affine_element*)(aligned_alloc(
         64, sizeof(barretenberg::g1::affine_element) * (2 * num_points + prefetch_overflow)));
 
     monomials_[0] = barretenberg::g1::affine_one;
