@@ -66,7 +66,6 @@ template <typename settings> void ProverBase<settings>::compute_wire_pre_commitm
         });
     }
 
-    // add public inputs
     const polynomial& public_wires_source = key->wire_ffts.at("w_2_fft");
     std::vector<fr> public_wires;
     for (size_t i = 0; i < key->num_public_inputs; ++i) {
@@ -90,7 +89,6 @@ template <typename settings> void ProverBase<settings>::compute_quotient_pre_com
 template <typename settings> void ProverBase<settings>::execute_preamble_round()
 {
     queue.flush_queue();
-    info("n: ", n);
     transcript.add_element("circuit_size",
                            { static_cast<uint8_t>(n),
                              static_cast<uint8_t>(n >> 8),
@@ -101,12 +99,7 @@ template <typename settings> void ProverBase<settings>::execute_preamble_round()
                              static_cast<uint8_t>(key->num_public_inputs >> 8),
                              static_cast<uint8_t>(key->num_public_inputs >> 16),
                              static_cast<uint8_t>(key->num_public_inputs >> 24) });
-    info("num pub inputs: ", key->num_public_inputs);
-    info("circuit size: ", n);
     transcript.apply_fiat_shamir("init");
-
-    fr init = fr::serialize_from_buffer(transcript.get_challenge("init").begin());
-    info("init: ", init);
 
     for (size_t i = 0; i < settings::program_width; ++i) {
         std::string wire_tag = "w_" + std::to_string(i + 1);
@@ -154,8 +147,6 @@ template <typename settings> void ProverBase<settings>::execute_second_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("beta");
-    fr beta = fr::serialize_from_buffer(transcript.get_challenge("beta").begin());
-    info("beta: ", beta);
 #ifdef DEBUG_TIMING
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 #endif
@@ -275,7 +266,7 @@ template <typename settings> void ProverBase<settings>::execute_third_round()
 template <typename settings> void ProverBase<settings>::execute_fourth_round()
 {
     queue.flush_queue();
-    transcript.apply_fiat_shamir("z"); // end of 3rd round
+    transcript.apply_fiat_shamir("z");
 #ifdef DEBUG_TIMING
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 #endif
@@ -296,11 +287,9 @@ template <typename settings> void ProverBase<settings>::execute_fifth_round()
 #endif
     std::vector<fr> nu_challenges;
     for (size_t i = 0; i < transcript.get_num_challenges("nu"); ++i) {
-        info("nu challenges: ", fr::serialize_from_buffer(transcript.get_challenge("nu", i).begin()), "i: ", i);
         nu_challenges.emplace_back(fr::serialize_from_buffer(transcript.get_challenge("nu", i).begin()));
     }
     fr z_challenge = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
-    info("z challenge: ", z_challenge);
     fr* r = key->linear_poly.get_coefficients();
 
     std::array<fr*, settings::program_width> wires;
@@ -477,7 +466,6 @@ template <typename settings> barretenberg::fr ProverBase<settings>::compute_line
 
     if constexpr (settings::use_linearisation) {
         fr alpha_base = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
-        info("alpha challenge: ", alpha_base);
         for (size_t i = 0; i < widgets.size(); ++i) {
             alpha_base = widgets[i]->compute_linear_contribution(alpha_base, transcript, r);
         }

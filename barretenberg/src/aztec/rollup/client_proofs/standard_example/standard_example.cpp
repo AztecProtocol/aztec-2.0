@@ -38,8 +38,6 @@ Prover new_prover()
     Composer composer(proving_key, nullptr);
     build_circuit(composer);
 
-    info("composer gates: ", composer.get_num_gates());
-
     Prover prover = composer.create_prover();
 
     return prover;

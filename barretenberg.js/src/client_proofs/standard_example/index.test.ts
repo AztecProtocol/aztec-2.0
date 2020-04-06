@@ -58,7 +58,6 @@ describe('create_example_proof', () => {
     debug(`proof size: ${proof.length}`);
 
     const verified = await createStandardProof.verifyProof(proof);
-    console.log({ verified });
     expect(verified).toBe(true);
   }, 60000);
 });
