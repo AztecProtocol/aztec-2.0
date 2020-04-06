@@ -4,14 +4,14 @@ export const dummyProof = inputString.replace(/\s/g,'');
 
 export const proofVariables = {
     verificationKey: '',
-    circuitSize: '256', // 256
-    publicInput: '1',
+    circuitSize: '256',
+    numPublicInputs: '1',
 }
 
 export const expectedChallenges = {
-    expectedInit: '0x2a7713a2494b9aed2d62f46c3aea18dc6fc9b7b61ef0be5632640cfeadb3f159',
-    expectedBeta: '0x2851a6d936165567eb584f748eacb4c4294dc54e031b301f1a192b970adef5ea',
-    expectedGamma: '',
+    expectedInit: '0x5adb62152a7d3b16e5b33a22bc6b713997fd9ffe98aa2ee7764602929db3f15a',
+    expectedBeta: '0x694561f6377c67b5fb98b306c5f5646d2f368ede6cb7b30bd63dde9012803017',
+    expectedGamma: '0x9a9c139c975983e86a9a9fe6e6eb24528f94ff9cc187ae442509c0bba773792d',
     expectedAlpha: '0x051004ed71bab47acf579367a915f64375a139f28fac94d66e416526f2f29e28',
     expectedZ: '0x2ddb3951724f506252bbb1fedaf6db153eac44c4ec7d64ac5b5c519ca59983cd',
     expectedV0: '0x098565e3172a7262bee92c71ddd51e249158056334b08e578b48ebd118609a85i',
