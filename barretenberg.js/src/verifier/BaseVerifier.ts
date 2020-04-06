@@ -1,8 +1,25 @@
-import ProofUtils from './ProofUtils';
+import * as bn128 from '@aztec/bn128';
 import { constants, errors } from '@aztec/dev-utils';
+import { toBN } from 'web3-utils';
+import BN from 'bn.js';
+import ProofUtils from './ProofUtils';
 
 export default class BaseVerifier {
-  constructor() {}
+  public verificationKey!: string;
+  public circuitSize!: BN;
+  public numPublicInputs!: BN;
+
+  // Challenges
+  public initChallenge!: any;
+  public beta!: BN;
+  public gamma!: BN;
+  public alpha!: BN;
+  public zeta!: BN;
+  public vChallenges!: BN[];
+
+  constructor(verificationKey: string) {
+    this.verificationKey = verificationKey;
+  }
 
   /**
    * Extract the G1Points, field elements and publicInputs from the proofData. Also, convert them from
@@ -120,7 +137,6 @@ export default class BaseVerifier {
     names.forEach((name, index) => {
       const elementStart = index * elementSize;
       const hexDataElement = data.slice(elementStart, elementStart + elementSize);
-      console.log({ hexDataElement });
 
       let dataElement: any;
       if (elementSize === 128) {
@@ -131,10 +147,21 @@ export default class BaseVerifier {
         dataElement = ProofUtils.hexToGroupScalar(hexDataElement);
       }
 
-      extractData[name] = dataElement;
+      extractData[name] = { bn: dataElement, hex: hexDataElement };
     });
 
     return extractData;
+  }
+
+  /**
+   * Extract circuit variables from the verification key
+   *
+   * TODO: when prover exports verificationKey, update this method to use that
+   * rather than hard coded
+   */
+  public decodeVerificationKey() {
+    this.circuitSize = new BN(256); // needs slicing out of verification key
+    this.numPublicInputs = new BN(1); // needs slicing out of verification key
   }
 
   /**
@@ -142,8 +169,27 @@ export default class BaseVerifier {
    * of the field
    */
   public validateInputs(G1Points: any[], fieldElements: any[], publicInputs: string[]) {
-    G1Points.forEach(point => ProofUtils.validatePointOnCurve(point));
-    fieldElements.forEach(fieldElement => ProofUtils.validateElement(fieldElement));
-    publicInputs.forEach(publicInput => ProofUtils.validateElement(publicInput));
+    G1Points.forEach((point) => ProofUtils.validatePointOnCurve(point.bn));
+    fieldElements.forEach((fieldElement) => ProofUtils.validateElement(fieldElement.bn));
+    publicInputs.forEach((publicInput) => ProofUtils.validateElement(publicInput));
+  }
+
+  /**
+   * Convert challenges from hex strings to BN instances
+   */
+  public convertChallengesToBN(
+    initChallenge: string,
+    beta: string,
+    gamma: string,
+    alpha: string,
+    zeta: string,
+    vChallenges: string[],
+  ) {
+    this.initChallenge = toBN(initChallenge).toRed(bn128.groupReduction);
+    this.beta = toBN(beta).toRed(bn128.groupReduction);
+    this.gamma = toBN(gamma).toRed(bn128.groupReduction);
+    this.alpha = toBN(alpha).toRed(bn128.groupReduction);
+    this.zeta = toBN(zeta).toRed(bn128.groupReduction);
+    this.vChallenges = vChallenges.map((vChallenge) => toBN(vChallenge).toRed(bn128.groupReduction));
   }
 }

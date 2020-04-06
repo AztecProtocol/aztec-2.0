@@ -11,9 +11,9 @@ export default class ProofUtils {
      * @param {string} yHex hexadecimal representation of y coordinate
      * @returns {BN} bn.js formatted version of a point on the bn128 curve
      */
-    static hexToGroupPoint(xHex, yHex) {
-        let x = new BN(xHex, 16);
-        let y = new BN(yHex, 16);
+    static hexToGroupPoint(xHex: string, yHex: string) {
+        let x: any = new BN(xHex, 16);
+        let y: any = new BN(yHex, 16);
         // if (!x.lt(bn128.curve.p)) {
         //     this.errors.push(errors.codes.X_TOO_BIG);
         // }

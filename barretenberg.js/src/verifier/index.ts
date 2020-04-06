@@ -4,92 +4,64 @@ import Transcript from '../transcript';
 import BN from 'bn.js';
 
 export class Verifier extends BaseVerifier {
-  public data!: object;
+  public data!: any;
   public G1Points!: any[];
   public fieldElements!: any[];
   public publicInputs!: any[];
-  circuitSize!: string;
 
   constructor(proofData: string, verificationKey: string) {
-    super();
+    super(verificationKey);
 
     const { data, G1Points, fieldElements, publicInputs } = this.decodeProof(proofData);
     this.data = data;
     this.G1Points = G1Points;
     this.fieldElements = fieldElements;
     this.publicInputs = publicInputs;
-    
-    // will need changing depending on setup
-    this.circuitSize = verificationKey.slice(0, 0x20);
 
+    this.decodeVerificationKey();
     this.validateInputs(this.G1Points, this.fieldElements, this.publicInputs);
     this.computeChallenges();
   }
 
   /**
    * Compute beta, gamma, alpha, zeta, v, u challenges
+   * Need the hex representation of vars for this function
    */
   public computeChallenges() {
-      /**
-       * In the prover, the following transcript is built up by concatenating elements
-       * together:
-       * 
-       * preamble round
-       * 1) circuitSize
-       * 2) publicInputSize
-       * 3) publicInputs
-       * 
-       * first proof round
-       * 1) publicInputs
-       * Get beta out
-       * 2) append 1, get gamma out
-       * 
-       */
-    // need: 1) common preprocessed input, 2) publicInput, 3) proof elements written by prover
     const transcript = new Transcript();
-    const preambleHash = transcript.preamble(this.circuitSize, this.publicInputs);
-    console.log({ preambleHash });
-    // const { beta, gamma } = transcript.secondRound();
-    // const alpha = transcript.thirdRound();
-    // const zeta = transcript.fourthRound();
-    // const { v, u } = transcript.fifthRound();
+    const initChallenge: string = transcript.preamble(this.circuitSize, this.numPublicInputs);
+    const { beta, gamma } = transcript.secondRound(
+      this.publicInputs,
+      this.data.aCommit.hex,
+      this.data.bCommit.hex,
+      this.data.cCommit.hex,
+    );
+    const alpha: string = transcript.thirdRound(this.data.zCommit.hex);
+    const zeta: string = transcript.fourthRound(
+      this.data.tlowCommit.hex,
+      this.data.tmidCommit.hex,
+      this.data.thighCommit.hex,
+    );
 
-    // return {
-    //     beta,
-    //     gamma,
-    //     alpha,
-    //     zeta,
-    //     v,
-    //     u
-    // }
+    // need to find the data below from somewhere
+    const vChallenges: string[] = transcript.fifthRound(
+      this.data.aEval.hex,
+      this.data.bEval.hex,
+      this.data.cEval.hex,
+      this.data.W_w.hex,
+      this.data.zwEval.hex, // TODO: check
+      this.data.s1Eval.hex,
+      this.data.s2Eval.hex,
+      this.data.rEval.hex,
+      this.data.W.hex, // TODO: check
+    );
 
-    // rollingHash.appendPoint(this.data['aCommit']);
-    // rollingHash.appendPoint(this.data['bCommit']);
-    // rollingHash.appendPoint(this.data['cCommit']);
-    // this.publicInputs.forEach(publicInput => rollingHash.appendFieldElement(publicInput));
-    // const beta = rollingHash.keccak();
-
-    // rollingHash.appendFieldElement(new BN(1));
-    // const gamma = rollingHash.keccak();
-
-    // rollingHash.appendPoint(this.data['zCommit']);
-    // const alpha = rollingHash.keccak();
-
-    // rollingHash.appendPoint(this.data['tlowCommit']);
-    // rollingHash.appendPoint(this.data['tmidCommit']);
-    // rollingHash.appendPoint(this.data['thighCommit']);
-    // const zeta = rollingHash.keccak();
-
-    // this.fieldElements.forEach(fieldElement => rollingHash.appendFieldElement(fieldElement));
-    // const v = rollingHash.keccak();
-
-    // rollingHash.appendPoint(this.data['W']);
-    // rollingHash.appendPoint(this.data['W_w']);
-    // const u = rollingHash.keccak();
-
-    // return { beta, gamma, alpha, zeta, v, u };
+    super.convertChallengesToBN(initChallenge, beta, gamma, alpha, zeta, vChallenges);
   }
 
+  /**
+   * Compute the
+   */
   public computePolynomialEvaluations() {}
 
   public verifyProof() {}

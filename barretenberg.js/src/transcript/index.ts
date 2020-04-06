@@ -146,7 +146,6 @@ export default class Transcript {
    * Apply the Fiat Shamir protocol to generate a challenge
    */
   keccak() {
-    console.log('this.data: ', this.data);
     this.data = keccak256(`0x${this.data}`).slice(2);
     return `0x${this.data}`;
   }
