@@ -11,7 +11,7 @@ export function createRedBN(input: any): any {
 }
   
 export function redDivision(numerator: any, denominator: any): BN {
-    return (numerator.redMul(denominator.redInvm())).fromRed();
+    return (numerator.redMul(denominator.redInvm()));
 }
 
 /**
@@ -21,5 +21,5 @@ export function redDivision(numerator: any, denominator: any): BN {
  * Takes inputs in non reduction form, returns the result in reduction form
  */
 export function computeBracket(x: any, a: any, y: any, z: any): any {
-    return toRedBN(x).redAdd(toRedBN(z)).redAdd(toRedBN(a).toRedMul(toRedBN(y)));
+    return (x.redAdd(z).redAdd(a)).redMul(y);
 }

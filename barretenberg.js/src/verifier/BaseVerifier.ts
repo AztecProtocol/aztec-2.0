@@ -2,7 +2,9 @@ import * as bn128 from '@aztec/bn128';
 import { constants, errors } from '@aztec/dev-utils';
 import { toBN } from 'web3-utils';
 import BN from 'bn.js';
+
 import ProofUtils from './ProofUtils';
+import { toRedBN } from '../polynomialEval/utils';
 
 export default class BaseVerifier {
   public verificationKey!: string;
@@ -147,7 +149,7 @@ export default class BaseVerifier {
         dataElement = ProofUtils.hexToGroupScalar(hexDataElement);
       }
 
-      extractData[name] = { bn: dataElement, hex: hexDataElement };
+      extractData[name] = { BN: dataElement, hex: hexDataElement };
     });
 
     return extractData;
@@ -160,8 +162,8 @@ export default class BaseVerifier {
    * rather than hard coded
    */
   public decodeVerificationKey() {
-    this.circuitSize = new BN(256); // needs slicing out of verification key
-    this.numPublicInputs = new BN(1); // needs slicing out of verification key
+    this.circuitSize = new BN(256).toRed(bn128.groupReduction); // needs slicing out of verification key
+    this.numPublicInputs = new BN(1).toRed(bn128.groupReduction); // needs slicing out of verification key
   }
 
   /**
@@ -185,11 +187,11 @@ export default class BaseVerifier {
     zeta: string,
     vChallenges: string[],
   ) {
-    this.initChallenge = toBN(initChallenge).toRed(bn128.groupReduction);
-    this.beta = toBN(beta).toRed(bn128.groupReduction);
-    this.gamma = toBN(gamma).toRed(bn128.groupReduction);
-    this.alpha = toBN(alpha).toRed(bn128.groupReduction);
-    this.zeta = toBN(zeta).toRed(bn128.groupReduction);
-    this.vChallenges = vChallenges.map((vChallenge) => toBN(vChallenge).toRed(bn128.groupReduction));
+    this.initChallenge = toRedBN(initChallenge)
+    this.beta = toRedBN(beta)
+    this.gamma = toRedBN(gamma)
+    this.alpha = toRedBN(alpha)
+    this.zeta = toRedBN(zeta)
+    this.vChallenges = vChallenges.map(vChallenge => toRedBN(vChallenge));
   }
 }

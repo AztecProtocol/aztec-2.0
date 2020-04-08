@@ -9,7 +9,8 @@ export default class ProofUtils {
      * Converts a hexadecimal input to a group point
      * @param {string} xHex hexadecimal representation of x coordinate
      * @param {string} yHex hexadecimal representation of y coordinate
-     * @returns {BN} bn.js formatted version of a point on the bn128 curve
+     * @returns {BN} bn.js formatted version of a point on the bn128 curve, in the 
+     * reduction context
      */
     static hexToGroupPoint(xHex: string, yHex: string) {
         let x: any = new BN(xHex, 16);
@@ -38,7 +39,8 @@ export default class ProofUtils {
      *
      * @param {string} hex hex input
      * @param {boolean} canbeZero control to determine hex input can be zero
-     * @returns {BN} bn.js formatted version of the scalar
+     * @returns {BN} bn.js formatted version of the scalar, in the reduction 
+     * context
      */
     static hexToGroupScalar(hex, canBeZero = false) {
         const hexBN = new BN(hex, 16);
