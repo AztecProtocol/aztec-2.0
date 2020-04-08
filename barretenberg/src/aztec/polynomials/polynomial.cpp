@@ -290,6 +290,18 @@ void polynomial::coset_ifft(const evaluation_domain& domain)
     size = domain.size;
 }
 
+void polynomial::coset_ifft(const evaluation_domain& domain,
+                           const evaluation_domain& large_domain,
+                           const size_t domain_extension)
+{
+    if ((domain.size * domain_extension) > max_size) {
+        bump_memory(domain.size * domain_extension);
+    }
+
+    polynomial_arithmetic::coset_ifft(coefficients, domain, large_domain, domain_extension);
+    size = (domain.size * domain_extension);
+}
+
 // void polynomial::coset_ifft_with_constant(const evaluation_domain &domain, const fr &constant)
 // {
 //     if (domain.size > max_size)

@@ -38,6 +38,11 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+if(PROFILING)
+    message(STATUS "Profiling proof construction.")
+    add_definitions(-DBARRETENBERG_PROFILING=1)
+endif()
+
 include(GNUInstallDirs)
 include(cmake/arch.cmake)
 include(cmake/threading.cmake)

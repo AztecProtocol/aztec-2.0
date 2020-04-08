@@ -1,10 +1,11 @@
 #include "prover.hpp"
 #include "../public_inputs/public_inputs.hpp"
 #include "../utils/linearizer.hpp"
-#include <chrono>
 #include <ecc/curves/bn254/scalar_multiplication/scalar_multiplication.hpp>
 #include <polynomials/iterate_over_domain.hpp>
 #include <polynomials/polynomial_arithmetic.hpp>
+
+#include <common/profiler.hpp>
 
 using namespace barretenberg;
 
@@ -113,177 +114,73 @@ template <typename settings> void ProverBase<settings>::execute_preamble_round()
 template <typename settings> void ProverBase<settings>::execute_first_round()
 {
     queue.flush_queue();
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "init quotient polys: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute wire coefficients: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
     compute_wire_pre_commitments();
     for (auto& widget : widgets) {
         widget->compute_round_commitments(transcript, 1, queue);
     }
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute wire commitments: " << diff.count() << "ms" << std::endl;
-#endif
 }
 
 template <typename settings> void ProverBase<settings>::execute_second_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("beta");
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute z coefficients: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
+    profiler::start_measurement();
     for (auto& widget : widgets) {
         widget->compute_round_commitments(transcript, 2, queue);
     }
-
+    profiler::end_measurement("compute 2nd round commitments");
     for (size_t i = 0; i < settings::program_width; ++i) {
         std::string wire_tag = "w_" + std::to_string(i + 1);
         queue.add_to_queue({ work_queue::WorkType::FFT, nullptr, wire_tag });
     }
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute z commitment: " << diff.count() << "ms" << std::endl;
-#endif
 }
 
 template <typename settings> void ProverBase<settings>::execute_third_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("alpha");
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute wire ffts: " << diff.count() << "ms" << std::endl;
-#endif
-
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "copy z: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute permutation grand product coeffs: " << diff.count() << "ms" << std::endl;
-#endif
     fr alpha_base = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
-    // fr alpha_base = alpha.sqr().sqr();
 
     for (size_t i = 0; i < widgets.size(); ++i) {
-#ifdef DEBUG_TIMING
-        std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
         alpha_base = widgets[i]->compute_quotient_contribution(alpha_base, transcript);
-#ifdef DEBUG_TIMING
-        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-        std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        std::cout << "widget " << i << " quotient compute time: " << diff.count() << "ms" << std::endl;
-#endif
     }
 
     fr* q_mid = &key->quotient_mid[0];
     fr* q_large = &key->quotient_large[0];
 
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
     if constexpr (settings::uses_quotient_mid) {
         barretenberg::polynomial_arithmetic::divide_by_pseudo_vanishing_polynomial(
             key->quotient_mid.get_coefficients(), key->small_domain, key->mid_domain);
     }
     barretenberg::polynomial_arithmetic::divide_by_pseudo_vanishing_polynomial(
         key->quotient_large.get_coefficients(), key->small_domain, key->large_domain);
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "divide by vanishing polynomial: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
+
     if (settings::uses_quotient_mid) {
         key->quotient_mid.coset_ifft(key->mid_domain);
     }
-    key->quotient_large.coset_ifft(key->large_domain);
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "final inverse fourier transforms: " << diff.count() << "ms" << std::endl;
-#endif
+    // key->quotient_large.coset_ifft(key->large_domain);
+    key->quotient_large.coset_ifft(key->small_domain, key->large_domain, 4);
+
     if (settings::uses_quotient_mid) {
         ITERATE_OVER_DOMAIN_START(key->mid_domain);
         q_large[i] += q_mid[i];
         ITERATE_OVER_DOMAIN_END;
     }
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
     compute_quotient_pre_commitment();
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute quotient commitment: " << diff.count() << "ms" << std::endl;
-#endif
 }
 
 template <typename settings> void ProverBase<settings>::execute_fourth_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("z"); // end of 3rd round
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
     compute_linearisation_coefficients();
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute linearisation coefficients: " << diff.count() << "ms" << std::endl;
-#endif
+    profiler::end_measurement("compute linearisation coefficients");
 }
 
 template <typename settings> void ProverBase<settings>::execute_fifth_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("nu");
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
     std::vector<fr> nu_challenges;
     std::vector<fr> shifted_nu_challenges;
 
@@ -376,39 +273,17 @@ template <typename settings> void ProverBase<settings>::execute_fifth_round()
         ITERATE_OVER_DOMAIN_END;
     }
 
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute base opening poly contribution: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
     // Currently code assumes permutation_widget is first.
     for (size_t i = 0; i < widgets.size(); ++i) {
         widgets[i]->compute_opening_poly_contribution(transcript, settings::use_linearisation);
     }
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute widget opening poly contributions: " << diff.count() << "ms" << std::endl;
-#endif
+
     fr shifted_z;
     shifted_z = z_challenge * key->small_domain.root;
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
+
     opening_poly.compute_kate_opening_coefficients(z_challenge);
 
     shifted_opening_poly.compute_kate_opening_coefficients(shifted_z);
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute kate opening poly coefficients: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
 
     queue.add_to_queue({
         work_queue::WorkType::SCALAR_MULTIPLICATION,
@@ -420,11 +295,6 @@ template <typename settings> void ProverBase<settings>::execute_fifth_round()
         shifted_opening_poly.get_coefficients(),
         "PI_Z_OMEGA",
     });
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute opening commitment: " << diff.count() << "ms" << std::endl;
-#endif
 }
 
 template <typename settings> barretenberg::fr ProverBase<settings>::compute_linearisation_coefficients()
@@ -479,17 +349,50 @@ template <typename settings> waffle::plonk_proof& ProverBase<settings>::export_p
 
 template <typename settings> waffle::plonk_proof& ProverBase<settings>::construct_proof()
 {
+    profiler::start_measurement();
     execute_preamble_round();
+    profiler::end_measurement("preamble round");
+
+    profiler::start_measurement();
     queue.process_queue();
+    profiler::end_measurement("preamble queue");
+
+    profiler::start_measurement();
     execute_first_round();
+    profiler::end_measurement("first round");
+
+    profiler::start_measurement();
     queue.process_queue();
+    profiler::end_measurement("first round queue");
+
+    profiler::start_measurement();
     execute_second_round();
+    profiler::end_measurement("second round");
+
+    profiler::start_measurement();
     queue.process_queue();
+    profiler::end_measurement("second round queue");
+
+    profiler::start_measurement();
     execute_third_round();
+    profiler::end_measurement("third round");
+
+    profiler::start_measurement();
     queue.process_queue();
+    profiler::end_measurement("third round queue");
+
+    profiler::start_measurement();
     execute_fourth_round();
+    profiler::end_measurement("fourth round");
+
+    profiler::start_measurement();
     execute_fifth_round();
+    profiler::end_measurement("fifth round");
+
+    profiler::start_measurement();
     queue.process_queue();
+    profiler::end_measurement("fifth round queue");
+
     return export_proof();
 }
 

@@ -32,6 +32,10 @@ void coset_fft(fr* coeffs,
 void coset_fft_with_constant(fr* coeffs, const evaluation_domain& domain, const fr& constant);
 
 void ifft(fr* coeffs, const evaluation_domain& domain);
+void coset_ifft(fr* coeffs,
+                const evaluation_domain& small_domain,
+                const evaluation_domain& large_domain,
+                const size_t domain_extension);
 
 void ifft_with_constant(fr* coeffs, const evaluation_domain& domain, const fr& value);
 

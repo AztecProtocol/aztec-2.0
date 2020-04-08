@@ -397,6 +397,122 @@ void coset_fft(fr* coeffs, const evaluation_domain& domain)
     fft(coeffs, domain);
 }
 
+void debug_coset_fft(fr* coeffs,
+                     const fr& large_root,
+                     const fr& small_root,
+                     const std::vector<fr*>& round_roots,
+                     const evaluation_domain& domain,
+                     const size_t domain_extension)
+{
+    fr* scratch_space = get_scratch_space(domain.size * domain_extension);
+
+    std::vector<fr> coeffs_copy;
+
+    coeffs_copy.resize(domain.size * 4);
+
+    const size_t n = domain.size;
+    // for (size_t i = 0; i < 4 * n; ++i) {
+    //     coeffs_copy[i] = coeffs[i];
+    // }
+    for (size_t k = 0; k < 4; ++k) {
+        fr omega_base = large_root.pow(k);
+        fr omega_step = large_root.pow(k * domain.size);
+        fr work_root = fr(1);
+        for (size_t i = 0; i < domain.size; ++i) {
+            auto t0 = coeffs[i] * work_root;
+            work_root *= omega_step;
+            auto t1 = coeffs[i + n] * work_root;
+            work_root *= omega_step;
+            auto t2 = coeffs[i + n + n] * work_root;
+            work_root *= omega_step;
+            auto t3 = coeffs[i + n + n + n] * work_root;
+            work_root *= omega_step;
+            coeffs_copy[k * n + i] = t0 + t1 + t2 + t3;
+            work_root *= omega_base;
+        }
+    }
+
+    for (size_t i = 0; i < 4; ++i) {
+        fft_inner_parallel(
+            &coeffs_copy[(i * domain.size)], scratch_space + (i * domain.size), domain, small_root, round_roots);
+    }
+
+    for (size_t j = 0; j < domain.num_threads; ++j) {
+        const size_t start = j * domain.thread_size;
+        const size_t end = (j + 1) * domain.thread_size;
+        for (size_t i = start; i < end; ++i) {
+            coeffs[i * 4] = scratch_space[i];
+            coeffs[i * 4 + 1] = scratch_space[i + n];
+            coeffs[i * 4 + 2] = scratch_space[i + n + n];
+            coeffs[i * 4 + 3] = scratch_space[i + n + n + n];
+        }
+    }
+}
+
+void debug_coset_fft_old(fr* coeffs,
+                         const fr& large_root,
+                         const fr& small_root,
+                         const std::vector<fr*>& round_roots,
+                         const evaluation_domain& domain,
+                         const size_t domain_extension)
+{
+    const size_t log2_domain_extension = static_cast<size_t>(numeric::get_msb(domain_extension));
+    fr primitive_root = large_root;
+
+    // fr work_root = domain.generator.sqr();
+    // work_root = domain.generator.sqr();
+    fr* scratch_space = get_scratch_space(domain.size * domain_extension);
+
+    // fr* temp_memory = static_cast<fr*>(aligned_alloc(64, sizeof(fr) * domain.size *
+    // domain_extension));
+
+    std::vector<fr> coset_generators(domain_extension);
+    coset_generators[0] = fr::one();
+    for (size_t i = 1; i < domain_extension; ++i) {
+        coset_generators[i] = coset_generators[i - 1] * primitive_root;
+    }
+    for (size_t i = domain_extension - 1; i < domain_extension; --i) {
+        scale_by_generator(coeffs + (i * domain.size),
+                           coeffs + (i * domain.size),
+                           domain,
+                           fr::one(),
+                           coset_generators[i],
+                           domain.size);
+    }
+
+    for (size_t i = 0; i < domain_extension; ++i) {
+        fft_inner_parallel(
+            coeffs + (i * domain.size), scratch_space + (i * domain.size), domain, small_root, round_roots);
+    }
+
+    if (domain_extension == 4) {
+#ifndef NO_MULTITHREADING
+#pragma omp parallel for
+#endif
+        for (size_t j = 0; j < domain.num_threads; ++j) {
+            const size_t start = j * domain.thread_size;
+            const size_t end = (j + 1) * domain.thread_size;
+            for (size_t i = start; i < end; ++i) {
+                fr::__copy(scratch_space[i], coeffs[(i << 2UL)]);
+                fr::__copy(scratch_space[i + (1UL << domain.log2_size)], coeffs[(i << 2UL) + 1UL]);
+                fr::__copy(scratch_space[i + (2UL << domain.log2_size)], coeffs[(i << 2UL) + 2UL]);
+                fr::__copy(scratch_space[i + (3UL << domain.log2_size)], coeffs[(i << 2UL) + 3UL]);
+            }
+        }
+        for (size_t i = 0; i < domain.size; ++i) {
+            for (size_t j = 0; j < domain_extension; ++j) {
+                fr::__copy(scratch_space[i + (j << domain.log2_size)], coeffs[(i << log2_domain_extension) + j]);
+            }
+        }
+    } else {
+        for (size_t i = 0; i < domain.size; ++i) {
+            for (size_t j = 0; j < domain_extension; ++j) {
+                fr::__copy(scratch_space[i + (j << domain.log2_size)], coeffs[(i << log2_domain_extension) + j]);
+            }
+        }
+    }
+}
+
 void coset_fft(fr* coeffs, const evaluation_domain& domain, const evaluation_domain&, const size_t domain_extension)
 {
     const size_t log2_domain_extension = static_cast<size_t>(numeric::get_msb(domain_extension));
@@ -470,10 +586,58 @@ void ifft_with_constant(fr* coeffs, const evaluation_domain& domain, const fr& v
     ITERATE_OVER_DOMAIN_END;
 }
 
+void coset_ifft(fr* coeffs,
+                const evaluation_domain& small_domain,
+                const evaluation_domain& large_domain,
+                const size_t domain_extension)
+{
+    // const size_t n = small_domain.size;
+    // std::vector<fr> coeffs_0;
+    // std::vector<fr> coeffs_1;
+    // std::vector<fr> coeffs_2;
+    // std::vector<fr> coeffs_3;
+    // coeffs_0.resize(n);
+    // coeffs_1.resize(n);
+    // coeffs_2.resize(n);
+    // coeffs_3.resize(n);
+    // for (size_t i = 0; i < small_domain.size; ++i)
+    // {
+    //     coeffs_copy[i] = coeffs[4 * i];
+    //     coeffs_copy[n + i] = coeffs[4 * i + 1];
+    //     coeffs_copy[n + n + i] = coeffs[4 * i + 2];
+    //     coeffs_copy[n + n + n + i] = coeffs[4 * i  +3];
+    // }
+    // fr primitive_root = fr::get_root_of_unity(domain.log2_size + log2_domain_extension);
+    // const size_t domain_extension = 4;
+    // std::vector<fr> coset_generators(domain_extension);
+    // coset_generators[0] = fr::one();
+    // for (size_t i = 1; i < domain_extension; ++i) {
+    //     coset_generators[i] = coset_generators[i - 1] * primitive_root;
+    // }
+    // scale_by_generator(&coeffs_0[0], &coeffs_0[0], small_domain, fr::one(), coset_generators[0], small_domain.size);
+    // scale_by_generator(&coeffs_1[0], &coeffs_1[0], small_domain, fr::one(), coset_generators[0], small_domain.size);
+    // scale_by_generator(&coeffs_2[0], &coeffs_2[0], small_domain, fr::one(), coset_generators[0], small_domain.size);
+    // scale_by_generator(&coeffs_3[0], &coeffs_3[0], small_domain, fr::one(), coset_generators[0], small_domain.size);
+
+    // fft_inner_parallel(
+    //     coeffs + (i * domain.size), scratch_space + (i * domain.size), domain, domain.root,
+    //     domain.get_round_roots());
+
+    debug_coset_fft(coeffs,
+                    large_domain.root_inverse,
+                    small_domain.root_inverse,
+                    small_domain.get_inverse_round_roots(),
+                    small_domain,
+                    domain_extension);
+
+    scale_by_generator(
+        coeffs, coeffs, large_domain, large_domain.domain_inverse, large_domain.generator_inverse, large_domain.size);
+}
+
 void coset_ifft(fr* coeffs, const evaluation_domain& domain)
 {
-    ifft(coeffs, domain);
-    scale_by_generator(coeffs, coeffs, domain, fr::one(), domain.generator_inverse, domain.size);
+    fft_inner_parallel(coeffs, domain, domain.root_inverse, domain.get_inverse_round_roots());
+    scale_by_generator(coeffs, coeffs, domain, domain.domain_inverse, domain.generator_inverse, domain.size);
 }
 
 void add(const fr* a_coeffs, const fr* b_coeffs, fr* r_coeffs, const evaluation_domain& domain)

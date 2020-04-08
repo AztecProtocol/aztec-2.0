@@ -23,6 +23,7 @@ else()
 endif()
 
 add_subdirectory(env)
+add_subdirectory(common)
 add_subdirectory(numeric)
 add_subdirectory(srs)
 add_subdirectory(ecc)

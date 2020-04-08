@@ -1,1 +1,1 @@
-barretenberg_module(proof_system transcript reference_string polynomials)
+barretenberg_module(proof_system common transcript reference_string polynomials)

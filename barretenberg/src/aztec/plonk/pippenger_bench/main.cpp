@@ -37,7 +37,7 @@ using namespace barretenberg;
 //     }
 //     return acc;
 // }
-constexpr size_t NUM_POINTS = 1 << 16;
+constexpr size_t NUM_POINTS = 1 << 20;
 std::vector<fr> scalars;
 static barretenberg::evaluation_domain small_domain;
 static barretenberg::evaluation_domain large_domain;
@@ -46,7 +46,8 @@ auto reference_string = std::make_shared<waffle::FileReferenceString>(NUM_POINTS
 const auto init = []() {
     small_domain = barretenberg::evaluation_domain(NUM_POINTS);
     large_domain = barretenberg::evaluation_domain(NUM_POINTS * 4);
-
+    small_domain.compute_lookup_table();
+    large_domain.compute_lookup_table();
     fr element = fr::random_element();
     fr accumulator = element;
     scalars.reserve(NUM_POINTS * 4);

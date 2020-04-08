@@ -36,6 +36,10 @@ class polynomial {
     void ifft(const evaluation_domain& domain);
     void ifft_with_constant(const evaluation_domain& domain, const barretenberg::fr& constant);
     void coset_ifft(const evaluation_domain& domain);
+    void coset_ifft(const evaluation_domain& domain,
+                   const evaluation_domain& large_domain,
+                   const size_t domain_extension);
+
     // void coset_ifft_with_constant(const evaluation_domain &domain, const barretenberg::fr &constant);
 
     barretenberg::fr compute_kate_opening_coefficients(const barretenberg::fr& z);
