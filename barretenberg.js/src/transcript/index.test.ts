@@ -16,14 +16,14 @@ const {
   tlowCommit,
   tmidCommit,
   thighCommit,
-  w_1,
-  w_2,
-  w_3,
-  w_3_omega,
-  z_omega,
-  sigma_1,
-  sigma_2,
-  r,
+  aBar,
+  bBar,
+  cBar,
+  WzBar,
+  zwBar,
+  sigma1Bar,
+  sigma2Bar,
+  rBar,
   t,
 } = proofVariables;
 const { expectedInit, expectedBeta, expectedGamma, expectedAlpha, expectedZeta } = expectedChallenges;
@@ -99,7 +99,7 @@ describe('Transcript', () => {
       transcript.thirdRound(zCommit);
       transcript.fourthRound(tlowCommit, tmidCommit, thighCommit);
 
-      const vChallenges: string[] = transcript.fifthRound(w_1, w_2, w_3, w_3_omega, z_omega, sigma_1, sigma_2, r, t);
+      const vChallenges: string[] = transcript.fifthRound(aBar, bBar, cBar, WzBar, zwBar, sigma1Bar, sigma2Bar, rBar, t);
 
       vChallenges.forEach((challenge, index) => {
         expect(challenge).toBe(expectedVChallenges[index]);

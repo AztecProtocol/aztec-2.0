@@ -1,4 +1,4 @@
-import PolynomialEvalUtils from './PolynomialEvalUtils';
+import { computeZeroPolyEval, computeLagrangeEval, computePublicInputEval, computeQuotient } from '../polynomialEval';
 import BaseVerifier from './BaseVerifier';
 import Transcript from '../transcript';
 import BN from 'bn.js';
@@ -60,9 +60,17 @@ export class Verifier extends BaseVerifier {
   }
 
   /**
-   * Compute the
+   * Compute the evaluations of the necessary polynomials, required for the verification
+   * equation
    */
-  public computePolynomialEvaluations() {}
+  public computePolynomialEvaluations() {
+    const zeroEval = computeZeroPolyEval(this.zeta, this.circuitSize);
+    const lagrangeEval = computeLagrangeEval(zeroEval, this.zeta, this.circuitSize);
+    // const publicInputEval = computePublicInputEval();
+    // const quotientEval = computeQuotient()
+
+
+  }
 
   public verifyProof() {}
 }

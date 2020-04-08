@@ -66,25 +66,25 @@ export default class Transcript {
    * Involves adding
    */
   fifthRound(
-    w_1: string,
-    w_2: string,
-    w_3: string,
-    w_3_omega: string,
-    z_omega: string,
-    sigma_1: string,
-    sigma_2: string,
-    r: string,
+    aBar: string,
+    bBar: string,
+    cBar: string,
+    WzBar: string,
+    zwBar: string,
+    sigma1Bar: string,
+    sigma2Bar: string,
+    rBar: string,
     t: string,
   ) {
       const numChallenges: number = 10;
-      this.appendFieldElement(w_1);
-      this.appendFieldElement(w_2);
-      this.appendFieldElement(w_3);
-      this.appendFieldElement(w_3_omega);
-      this.appendFieldElement(z_omega);
-      this.appendFieldElement(sigma_1);
-      this.appendFieldElement(sigma_2);
-      this.appendFieldElement(r);
+      this.appendFieldElement(aBar);
+      this.appendFieldElement(bBar);
+      this.appendFieldElement(cBar);
+      this.appendFieldElement(WzBar);
+      this.appendFieldElement(zwBar);
+      this.appendFieldElement(sigma1Bar);
+      this.appendFieldElement(sigma2Bar);
+      this.appendFieldElement(rBar);
       this.appendFieldElement(t);
 
       const baseHash = this.keccak();
