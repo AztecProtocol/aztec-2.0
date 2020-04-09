@@ -1,6 +1,4 @@
 import * as bn128 from '@aztec/bn128';
-import { constants, errors } from '@aztec/dev-utils';
-import { toBN } from 'web3-utils';
 import BN from 'bn.js';
 
 import ProofUtils from './ProofUtils';
@@ -104,7 +102,7 @@ export default class BaseVerifier {
    */
   decodeFieldElements(proofData: string, fieldElementSize: number, start: number, end: number): object {
     const FieldElementsData: string = proofData.slice(start, end);
-    const fieldElementNames: string[] = ['aEval', 'bEval', 'cEval', 's1Eval', 's2Eval', 'rEval', 'zwEval'];
+    const fieldElementNames: string[] = ['aBar', 'bBar', 'cBar', 'sigma1Bar', 'sigma2Bar', 'rBar', 'zwBar'];
     return this.extractVariables(fieldElementNames, FieldElementsData, fieldElementSize);
   }
 
@@ -127,11 +125,10 @@ export default class BaseVerifier {
   }
 
   /**
-   * Extract
+   * General purpose function to extract variables from a string, given the raw string data, the 
+   * constant size of each variable and the names of the variables. Returns an object, where the key is the 
+   * variable name and the value the variable value
    *
-   * @param names
-   * @param data
-   * @param elementSize
    */
   extractVariables(names: string[], data: string, elementSize: number): object {
     const extractData: object = {};
@@ -158,12 +155,22 @@ export default class BaseVerifier {
   /**
    * Extract circuit variables from the verification key
    *
-   * TODO: when prover exports verificationKey, update this method to use that
-   * rather than hard coded
+   * TODO: when C++ prover exports verificationKey, update this method to use that
+   * rather than hard coded. 
    */
   public decodeVerificationKey() {
-    this.circuitSize = new BN(256).toRed(bn128.groupReduction); // needs slicing out of verification key
-    this.numPublicInputs = new BN(1).toRed(bn128.groupReduction); // needs slicing out of verification key
+    this.circuitSize = new BN(256).toRed(bn128.groupReduction); // TODO: needs slicing out of verification key
+    this.numPublicInputs = new BN(1).toRed(bn128.groupReduction); // TODO: needs slicing out of verification key
+  }
+
+  /**
+   * Extract and format the preprocessed input, including:
+   * - selector polynomials
+   * - k1, k2
+   * - sigma's: 1, 2, 3
+   */
+  public extractPreProcessedInput() {
+    // TODO
   }
 
   /**

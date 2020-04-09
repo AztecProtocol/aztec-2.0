@@ -1,4 +1,12 @@
-import { computeZeroPolyEval, computeLagrangeEval, computePublicInputEval, computeQuotient } from '../polynomialEval';
+import {
+  computeZeroPolyEval,
+  computeLagrangeEval,
+  computePublicInputEval,
+  computeQuotient,
+  computePartialOpening,
+  computeBatchOpening,
+  computeBatchEvaluation,
+} from '../polynomialEval';
 import BaseVerifier from './BaseVerifier';
 import Transcript from '../transcript';
 import BN from 'bn.js';
@@ -8,6 +16,13 @@ export class Verifier extends BaseVerifier {
   public G1Points!: any[];
   public fieldElements!: any[];
   public publicInputs!: any[];
+  public zeroEval!: BN;
+  public lagrangeEval!: BN;
+  public publicInputEval!: any;
+  public quotientEval!: any;
+  public partialOpening!: any;
+  public batchOpening!: any;
+  public batchEvaluation!: any;
 
   constructor(proofData: string, verificationKey: string) {
     super(verificationKey);
@@ -19,13 +34,14 @@ export class Verifier extends BaseVerifier {
     this.publicInputs = publicInputs;
 
     this.decodeVerificationKey();
+    this.extractPreProcessedInput();
     this.validateInputs(this.G1Points, this.fieldElements, this.publicInputs);
     this.computeChallenges();
+    this.computePolynomialEvaluations();
   }
 
   /**
-   * Compute beta, gamma, alpha, zeta, v, u challenges
-   * Need the hex representation of vars for this function
+   * Compute beta, gamma, alpha, zeta, v challenges
    */
   public computeChallenges() {
     const transcript = new Transcript();
@@ -43,16 +59,15 @@ export class Verifier extends BaseVerifier {
       this.data.thighCommit.hex,
     );
 
-    // need to find the data below from somewhere
     const vChallenges: string[] = transcript.fifthRound(
-      this.data.aEval.hex,
-      this.data.bEval.hex,
-      this.data.cEval.hex,
+      this.data.aBar.hex,
+      this.data.bBar.hex,
+      this.data.cBar.hex,
       this.data.W_w.hex,
-      this.data.zwEval.hex, // TODO: check
-      this.data.s1Eval.hex,
-      this.data.s2Eval.hex,
-      this.data.rEval.hex,
+      this.data.zwBar.hex, // TODO: check
+      this.data.sigma1Bar.hex,
+      this.data.sigma2Bar.hex,
+      this.data.rBar.hex,
       this.data.W.hex, // TODO: check
     );
 
@@ -64,13 +79,40 @@ export class Verifier extends BaseVerifier {
    * equation
    */
   public computePolynomialEvaluations() {
-    const zeroEval = computeZeroPolyEval(this.zeta, this.circuitSize);
-    const lagrangeEval = computeLagrangeEval(zeroEval, this.zeta, this.circuitSize);
-    // const publicInputEval = computePublicInputEval();
-    // const quotientEval = computeQuotient()
+    this.zeroEval = computeZeroPolyEval(this.zeta, this.circuitSize);
+    this.lagrangeEval = computeLagrangeEval(this.zeroEval, this.zeta, this.circuitSize);
 
+    // TODO: calculate the lagrange evaluations
+    this.publicInputEval = computePublicInputEval(this.publicInputs, this.lagrangeEvals);
+    this.quotientEval = computeQuotient(
+      this.publicInputEval,
+      this.zeroEval,
+      this.lagrangeEval,
+      this.data.rBar.BN,
+      this.beta,
+      this.gamma,
+      this.alpha,
+      this.data.aBar.BN,
+      this.data.bBar.BN,
+      this.data.cBar.BN,
+      this.data.sigma1Bar,
+      this.data.sigma2Bar,
+      this.data.zwBar
+    );
 
+    // TODO: update following methods once preprocessed input is sourced
+    this.partialOpening = computePartialOpening(this.beta, this.gamma, this.alpha, this.data.aBar.BN, this.data.bBar.BN, this.data.cBar.BN, this.data.sigma1Bar.BN, this.data.sigma2Bar.BN, this.data.zwBar.BN, this.vChallenges[0], qM, qL, qR, qO, qC, this.zeta, k1, k2, this.lagrangeEval, u, z, sigma3Bar);
+    this.batchOpening = computeBatchOpening();
+    this.batchEvaluation = computeBatchEvaluation();
   }
 
-  public verifyProof() {}
+  /**
+   * Verify the proof by evaluating a pairing
+   * Note: requires use of mcl-wasm library
+   */
+  public verifyProof() {
+      /**
+       * Perform pairing check according to round 12 in paper
+       */
+  }
 }

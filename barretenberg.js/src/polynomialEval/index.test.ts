@@ -32,9 +32,11 @@ const {
   rBar,
   t,
 } = proofVariables;
-const { expectedInit, expectedBeta, expectedGamma, expectedAlpha, expectedZeta } = expectedChallenges;
+const { expectedBeta, expectedGamma, expectedAlpha, expectedZeta } = expectedChallenges;
 
 describe('polynomialEval', () => {
+
+  // TODO: update when have extractPreProcessedInput() function  
   const qM = '0x1';
   const qL = '0x2';
   const qR = '0x3';
@@ -130,7 +132,6 @@ describe('polynomialEval', () => {
       toRedBN(z),
       toRedBN(sigma3Bar),
     ).toString(16);
-    console.log({ partialOpeningCommit });
     //   const expectedPartialOpeningCommit: string = '';
     //   expect(partialOpeningCommit).toBe(expectedPartialOpeningCommit);
   });

@@ -6,6 +6,7 @@ import { destroyWorker, createWorker, } from '../wasm/worker_factory';
 import { Verifier } from './index';
 import { dummyProof, dummyProofBuffer } from '../utils/dummyProof';
 
+// TODO: update when have complete verifier algo
 describe('Verifier', () => {
   let barretenberg!: BarretenbergWasm;
   let schnorr!: Schnorr;
@@ -13,15 +14,15 @@ describe('Verifier', () => {
   const proofData: string = dummyProof
 
   beforeAll(async () => {
-    barretenberg = new BarretenbergWasm();
+    // barretenberg = new BarretenbergWasm();
 
-    const code = await fetchCode();
+    // const code = await fetchCode();
 
-    barretenberg = await createWorker();
-    await barretenberg.init(code);
+    // barretenberg = await createWorker();
+    // await barretenberg.init(code);
 
-    const crs = new Crs(32768);
-    await crs.download();
+    // const crs = new Crs(32768);
+    // await crs.download();
 
     // schnorr = new Schnorr(barretenberg);
     // createProof = new CreateProof(barretenberg);
@@ -40,7 +41,6 @@ describe('Verifier', () => {
   describe('Success states', () => {
     it.only('should extract proof components', async () => {
         const { data, G1Points, fieldElements } = verifier.decodeProof(proofData);
-        console.log({ data });
         // expect(isValid).toBe(true);
       });
     

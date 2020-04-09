@@ -3,7 +3,6 @@ import BN from 'bn.js';
 import { toRedBN, createRedBN, redDivision, computeBracket } from './utils';
 
 export function computeZeroPolyEval(zeta: any, circuitSize: any): BN {
-  console.log({ circuitSize, zeta });
   return zeta.redPow(circuitSize).redSub(createRedBN(1));
 }
 
@@ -12,7 +11,7 @@ export function computeLagrangeEval(zeroPolyEval: any, zeta: any, circuitSize: a
   const zetaRed = zeta;
   const denominator = circuitSize.redMul(zetaRed.redSub(createRedBN(1)));
 
-  // TODO: check redDivision() function is doing what I want
+  // TODO: check redDivision() function is doing what I expect
   return redDivision(numerator, denominator);
 }
 

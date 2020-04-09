@@ -9,7 +9,7 @@ export default class Transcript {
   }
 
   /**
-   * Compute challenge associated with prover initialisation round.
+   * Compute challenge associated with prover round.
    *
    * Involves adding the circuit size and publicInputSize to the
    * transcript
