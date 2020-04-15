@@ -83,27 +83,27 @@ export class Verifier extends BaseVerifier {
     this.lagrangeEval = computeLagrangeEval(this.zeroEval, this.zeta, this.circuitSize);
 
     // TODO: calculate the lagrange evaluations
-    this.publicInputEval = computePublicInputEval(this.publicInputs, this.lagrangeEvals);
-    this.quotientEval = computeQuotient(
-      this.publicInputEval,
-      this.zeroEval,
-      this.lagrangeEval,
-      this.data.rBar.BN,
-      this.beta,
-      this.gamma,
-      this.alpha,
-      this.data.aBar.BN,
-      this.data.bBar.BN,
-      this.data.cBar.BN,
-      this.data.sigma1Bar,
-      this.data.sigma2Bar,
-      this.data.zwBar
-    );
+    // this.publicInputEval = computePublicInputEval(this.publicInputs, this.lagrangeEvals);
+    // this.quotientEval = computeQuotient(
+    //   this.publicInputEval,
+    //   this.zeroEval,
+    //   this.lagrangeEval,
+    //   this.data.rBar.BN,
+    //   this.beta,
+    //   this.gamma,
+    //   this.alpha,
+    //   this.data.aBar.BN,
+    //   this.data.bBar.BN,
+    //   this.data.cBar.BN,
+    //   this.data.sigma1Bar,
+    //   this.data.sigma2Bar,
+    //   this.data.zwBar
+    // );
 
-    // TODO: update following methods once preprocessed input is sourced
-    this.partialOpening = computePartialOpening(this.beta, this.gamma, this.alpha, this.data.aBar.BN, this.data.bBar.BN, this.data.cBar.BN, this.data.sigma1Bar.BN, this.data.sigma2Bar.BN, this.data.zwBar.BN, this.vChallenges[0], qM, qL, qR, qO, qC, this.zeta, k1, k2, this.lagrangeEval, u, z, sigma3Bar);
-    this.batchOpening = computeBatchOpening();
-    this.batchEvaluation = computeBatchEvaluation();
+    // // TODO: update following methods once preprocessed input is sourced
+    // this.partialOpening = computePartialOpening(this.beta, this.gamma, this.alpha, this.data.aBar.BN, this.data.bBar.BN, this.data.cBar.BN, this.data.sigma1Bar.BN, this.data.sigma2Bar.BN, this.data.zwBar.BN, this.vChallenges[0], qM, qL, qR, qO, qC, this.zeta, k1, k2, this.lagrangeEval, u, z, sigma3Bar);
+    // this.batchOpening = computeBatchOpening();
+    // this.batchEvaluation = computeBatchEvaluation();
   }
 
   /**

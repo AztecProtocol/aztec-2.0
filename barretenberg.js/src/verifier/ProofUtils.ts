@@ -15,12 +15,7 @@ export default class ProofUtils {
     static hexToGroupPoint(xHex: string, yHex: string) {
         let x: any = new BN(xHex, 16);
         let y: any = new BN(yHex, 16);
-        // if (!x.lt(bn128.curve.p)) {
-        //     this.errors.push(errors.codes.X_TOO_BIG);
-        // }
-        // if (!y.lt(bn128.curve.p)) {
-        //     this.errors.push(errors.codes.Y_TOO_BIG);
-        // }
+
         x = x.toRed(bn128.curve.red);
         y = y.toRed(bn128.curve.red);
         const lhs = y.redSqr();
@@ -28,9 +23,7 @@ export default class ProofUtils {
             .redSqr()
             .redMul(x)
             .redAdd(bn128.curve.b);
-        // if (!lhs.fromRed().eq(rhs.fromRed())) {
-        //     this.errors.push(errors.codes.NOT_ON_CURVE);
-        // }
+
         return bn128.curve.point(x, y);
     }
 
@@ -44,12 +37,6 @@ export default class ProofUtils {
      */
     static hexToGroupScalar(hex, canBeZero = false) {
         const hexBN = new BN(hex, 16);
-        // if (!hexBN.lt(bn128.curve.n)) {
-        //     this.errors.push(errors.codes.SCALAR_TOO_BIG);
-        // }
-        // if (!canBeZero && hexBN.eq(ZERO_BN)) {
-        //     this.errors.push(errors.codes.SCALAR_IS_ZERO);
-        // }
         return hexBN.toRed(bn128.groupReduction);
     }
 

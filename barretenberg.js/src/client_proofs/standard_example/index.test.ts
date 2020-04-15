@@ -53,7 +53,6 @@ describe('create_example_proof', () => {
     debug("creating proof...");
     const start = new Date().getTime();
     const proof = await createStandardProof.createExampleProof();
-    console.log({ proof });
     debug(`created proof: ${new Date().getTime() - start}ms`);
     debug(`proof size: ${proof.length}`);
 
