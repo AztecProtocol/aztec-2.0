@@ -13,20 +13,23 @@ using namespace barretenberg;
 
 namespace waffle {
 
-#define SELECTOR_REFS    \
-    auto& q_m = selectors[TurboSelectors::QM];\
-    auto& q_c = selectors[TurboSelectors::QC];\
-    auto& q_1 = selectors[TurboSelectors::Q1];\
-    auto& q_2 = selectors[TurboSelectors::Q2];\
-    auto& q_3 = selectors[TurboSelectors::Q3];\
-    auto& q_4 = selectors[TurboSelectors::Q4];\
-    auto& q_5 = selectors[TurboSelectors::Q5];\
-    auto& q_arith = selectors[TurboSelectors::QARITH];\
-    auto& q_ecc_1 = selectors[TurboSelectors::QECC_1];\
-    auto& q_range = selectors[TurboSelectors::QRANGE];\
+#define SELECTOR_REFS                                                                                                  \
+    auto& q_m = selectors[TurboSelectors::QM];                                                                         \
+    auto& q_c = selectors[TurboSelectors::QC];                                                                         \
+    auto& q_1 = selectors[TurboSelectors::Q1];                                                                         \
+    auto& q_2 = selectors[TurboSelectors::Q2];                                                                         \
+    auto& q_3 = selectors[TurboSelectors::Q3];                                                                         \
+    auto& q_4 = selectors[TurboSelectors::Q4];                                                                         \
+    auto& q_5 = selectors[TurboSelectors::Q5];                                                                         \
+    auto& q_arith = selectors[TurboSelectors::QARITH];                                                                 \
+    auto& q_ecc_1 = selectors[TurboSelectors::QECC_1];                                                                 \
+    auto& q_range = selectors[TurboSelectors::QRANGE];                                                                 \
     auto& q_logic = selectors[TurboSelectors::QLOGIC];
 
-#define TURBO_SEL_NAMES {"q_m","q_c","q_1","q_2","q_3","q_4","q_5","q_arith","q_ecc_1","q_range","q_logic"}
+#define TURBO_SEL_NAMES                                                                                                \
+    {                                                                                                                  \
+        "q_m", "q_c", "q_1", "q_2", "q_3", "q_4", "q_5", "q_arith", "q_ecc_1", "q_range", "q_logic"                    \
+    }
 TurboComposer::TurboComposer()
     : TurboComposer("../srs_db", 0)
 {}
@@ -35,14 +38,14 @@ TurboComposer::TurboComposer(std::string const& crs_path, const size_t size_hint
     : TurboComposer(std::unique_ptr<ReferenceStringFactory>(new FileReferenceStringFactory(crs_path)), size_hint){};
 
 TurboComposer::TurboComposer(std::unique_ptr<ReferenceStringFactory>&& crs_factory, const size_t size_hint)
-    : ComposerBase(std::move(crs_factory),11)
+    : ComposerBase(std::move(crs_factory), 11)
 {
     selector_names = TURBO_SEL_NAMES;
     w_l.reserve(size_hint);
     w_r.reserve(size_hint);
     w_o.reserve(size_hint);
     w_4.reserve(size_hint);
-    for(auto& p: selectors){
+    for (auto& p : selectors) {
         p.reserve(size_hint);
     }
     // q_m.reserve(size_hint);
@@ -66,12 +69,13 @@ TurboComposer::TurboComposer(std::shared_ptr<proving_key> const& p_key,
                              size_t size_hint)
     : ComposerBase(p_key, v_key)
 {
+    std::cout << "label" << std::endl;
     selector_names = TURBO_SEL_NAMES;
     w_l.reserve(size_hint);
     w_r.reserve(size_hint);
     w_o.reserve(size_hint);
     w_4.reserve(size_hint);
-    for(auto& p: selectors){
+    for (auto& p : selectors) {
         p.reserve(size_hint);
     }
     zero_idx = put_constant_variable(fr::zero());
@@ -673,7 +677,7 @@ waffle::accumulator_triple TurboComposer::create_logic_constraint(const uint32_t
                                                                   const size_t num_bits,
                                                                   const bool is_xor_gate)
 {
-   SELECTOR_REFS
+    SELECTOR_REFS
     ASSERT(static_cast<uint32_t>(variables.size()) > a);
     ASSERT(static_cast<uint32_t>(variables.size()) > b);
     ASSERT(((num_bits >> 1U) << 1U) == num_bits); // no odd number of bits! bad! only quads!
@@ -889,170 +893,13 @@ uint32_t TurboComposer::put_constant_variable(const barretenberg::fr& variable)
 
 std::shared_ptr<proving_key> TurboComposer::compute_proving_key()
 {
-    // SELECTOR_REFS
-    // if (circuit_proving_key) {
-    //     return circuit_proving_key;
-    // }
-    // create_dummy_gate();
-    // ASSERT(wire_copy_cycles.size() == variables.size());
-    // ASSERT(n == q_m.size());
-    // ASSERT(n == q_1.size());
-    // ASSERT(n == q_2.size());
-    // ASSERT(n == q_3.size());
-    // ASSERT(n == q_3.size());
-    // ASSERT(n == q_4.size());
-    // ASSERT(n == q_5.size());
-    // ASSERT(n == q_arith.size());
-    // ASSERT(n == q_ecc_1.size());
-    // ASSERT(n == q_range.size());
-    // ASSERT(n == q_logic.size());
-
-    // const size_t total_num_gates = n + public_inputs.size();
-
-    // size_t log2_n = static_cast<size_t>(numeric::get_msb(total_num_gates + 1));
-    // if ((1UL << log2_n) != (total_num_gates + 1)) {
-    //     ++log2_n;
-    // }
-    // size_t new_n = 1UL << log2_n;
-
-    // for (size_t i = total_num_gates; i < new_n; ++i) {
-    //     q_m.emplace_back(fr::zero());
-    //     q_1.emplace_back(fr::zero());
-    //     q_2.emplace_back(fr::zero());
-    //     q_3.emplace_back(fr::zero());
-    //     q_c.emplace_back(fr::zero());
-    //     q_4.emplace_back(fr::zero());
-    //     q_5.emplace_back(fr::zero());
-    //     q_arith.emplace_back(fr::zero());
-    //     q_ecc_1.emplace_back(fr::zero());
-    //     q_range.emplace_back(fr::zero());
-    //     q_logic.emplace_back(fr::zero());
-    // }
-
-    // auto crs = crs_factory_->get_prover_crs(new_n);
-    // circuit_proving_key = std::make_shared<proving_key>(new_n, public_inputs.size(), crs);
-
-    // for (size_t i = 0; i < public_inputs.size(); ++i) {
-    //     cycle_node left{ static_cast<uint32_t>(circuit_proving_key->small_domain.size + i - public_inputs.size()),
-    //                      WireType::LEFT };
-    //     cycle_node right{ static_cast<uint32_t>(i - public_inputs.size()), WireType::RIGHT };
-
-    //     std::vector<cycle_node>& old_cycle = wire_copy_cycles[static_cast<size_t>(public_inputs[i])];
-
-    //     std::vector<cycle_node> new_cycle;
-
-    //     new_cycle.emplace_back(left);
-    //     new_cycle.emplace_back(right);
-    //     for (size_t i = 0; i < old_cycle.size(); ++i) {
-    //         new_cycle.emplace_back(old_cycle[i]);
-    //     }
-    //     old_cycle = new_cycle;
-    // }
-
-    // polynomial poly_q_m(new_n);
-    // polynomial poly_q_c(new_n);
-    // polynomial poly_q_1(new_n);
-    // polynomial poly_q_2(new_n);
-    // polynomial poly_q_3(new_n);
-    // polynomial poly_q_4(new_n);
-    // polynomial poly_q_5(new_n);
-    // polynomial poly_q_arith(new_n);
-    // polynomial poly_q_ecc_1(new_n);
-    // polynomial poly_q_range(new_n);
-    // polynomial poly_q_logic(new_n);
-
-    // for (size_t i = 0; i < public_inputs.size(); ++i) {
-    //     poly_q_m[i] = fr::zero();
-    //     poly_q_1[i] = fr::zero();
-    //     poly_q_2[i] = fr::zero();
-    //     poly_q_3[i] = fr::zero();
-    //     poly_q_4[i] = fr::zero();
-    //     poly_q_5[i] = fr::zero();
-    //     poly_q_arith[i] = fr::zero();
-    //     poly_q_ecc_1[i] = fr::zero();
-    //     poly_q_c[i] = fr::zero();
-    //     poly_q_range[i] = fr::zero();
-    //     poly_q_logic[i] = fr::zero();
-    // }
-
-    // for (size_t i = public_inputs.size(); i < new_n; ++i) {
-    //     poly_q_m[i] = q_m[i - public_inputs.size()];
-    //     poly_q_1[i] = q_1[i - public_inputs.size()];
-    //     poly_q_2[i] = q_2[i - public_inputs.size()];
-    //     poly_q_3[i] = q_3[i - public_inputs.size()];
-    //     poly_q_c[i] = q_c[i - public_inputs.size()];
-    //     poly_q_4[i] = q_4[i - public_inputs.size()];
-    //     poly_q_5[i] = q_5[i - public_inputs.size()];
-    //     poly_q_arith[i] = q_arith[i - public_inputs.size()];
-    //     poly_q_ecc_1[i] = q_ecc_1[i - public_inputs.size()];
-    //     poly_q_range[i] = q_range[i - public_inputs.size()];
-    //     poly_q_logic[i] = q_logic[i - public_inputs.size()];
-    // }
-
-    // poly_q_1.ifft(circuit_proving_key->small_domain);
-    // poly_q_2.ifft(circuit_proving_key->small_domain);
-    // poly_q_3.ifft(circuit_proving_key->small_domain);
-    // poly_q_4.ifft(circuit_proving_key->small_domain);
-    // poly_q_5.ifft(circuit_proving_key->small_domain);
-    // poly_q_m.ifft(circuit_proving_key->small_domain);
-    // poly_q_c.ifft(circuit_proving_key->small_domain);
-    // poly_q_arith.ifft(circuit_proving_key->small_domain);
-    // poly_q_ecc_1.ifft(circuit_proving_key->small_domain);
-    // poly_q_range.ifft(circuit_proving_key->small_domain);
-    // poly_q_logic.ifft(circuit_proving_key->small_domain);
-
-    // polynomial poly_q_1_fft(poly_q_1, new_n * 4);
-    // polynomial poly_q_2_fft(poly_q_2, new_n * 4);
-    // polynomial poly_q_3_fft(poly_q_3, new_n * 4);
-    // polynomial poly_q_4_fft(poly_q_4, new_n * 4);
-    // polynomial poly_q_5_fft(poly_q_5, new_n * 4);
-    // polynomial poly_q_m_fft(poly_q_m, new_n * 4);
-    // polynomial poly_q_c_fft(poly_q_c, new_n * 4);
-    // polynomial poly_q_arith_fft(poly_q_arith, new_n * 4);
-    // polynomial poly_q_ecc_1_fft(poly_q_ecc_1, new_n * 4);
-    // polynomial poly_q_range_fft(poly_q_range, new_n * 4);
-    // polynomial poly_q_logic_fft(poly_q_logic, new_n * 4);
-
-    // poly_q_1_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_2_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_3_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_4_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_5_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_m_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_c_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_arith_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_ecc_1_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_range_fft.coset_fft(circuit_proving_key->large_domain);
-    // poly_q_logic_fft.coset_fft(circuit_proving_key->large_domain);
-
-    // circuit_proving_key->constraint_selectors.insert({ "q_m", std::move(poly_q_m) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_c", std::move(poly_q_c) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_arith", std::move(poly_q_arith) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_ecc_1", std::move(poly_q_ecc_1) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_1", std::move(poly_q_1) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_2", std::move(poly_q_2) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_3", std::move(poly_q_3) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_4", std::move(poly_q_4) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_5", std::move(poly_q_5) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_range", std::move(poly_q_range) });
-    // circuit_proving_key->constraint_selectors.insert({ "q_logic", std::move(poly_q_logic) });
-
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_m_fft", std::move(poly_q_m_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_c_fft", std::move(poly_q_c_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_arith_fft", std::move(poly_q_arith_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_ecc_1_fft", std::move(poly_q_ecc_1_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_1_fft", std::move(poly_q_1_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_2_fft", std::move(poly_q_2_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_3_fft", std::move(poly_q_3_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_4_fft", std::move(poly_q_4_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_5_fft", std::move(poly_q_5_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_range_fft", std::move(poly_q_range_fft) });
-    // circuit_proving_key->constraint_selector_ffts.insert({ "q_logic_fft", std::move(poly_q_logic_fft) });
+    if (circuit_proving_key) {
+        return circuit_proving_key;
+    }
+    create_dummy_gate();
 
     ComposerBase::compute_proving_key();
-    std::cout << "here2" << std::endl;
     compute_sigma_permutations<4>(circuit_proving_key.get());
-    std::cout << "here2" << std::endl;
     return circuit_proving_key;
 }
 
@@ -1121,26 +968,19 @@ std::shared_ptr<program_witness> TurboComposer::compute_witness()
 TurboProver TurboComposer::create_prover()
 {
     compute_proving_key();
-std::cout << "here4" <<std::endl;
 
     compute_witness();
-std::cout << "here4" <<std::endl;
 
     TurboProver output_state(circuit_proving_key, witness, create_manifest(public_inputs.size()));
-std::cout << "here4" <<std::endl;
 
     std::unique_ptr<ProverPermutationWidget<4>> permutation_widget =
         std::make_unique<ProverPermutationWidget<4>>(circuit_proving_key.get(), witness.get());
-std::cout << "here4" <<std::endl;
     std::unique_ptr<ProverTurboFixedBaseWidget> fixed_base_widget =
         std::make_unique<ProverTurboFixedBaseWidget>(circuit_proving_key.get(), witness.get());
-std::cout << "here4" <<std::endl;
     std::unique_ptr<ProverTurboRangeWidget> range_widget =
         std::make_unique<ProverTurboRangeWidget>(circuit_proving_key.get(), witness.get());
-std::cout << "here4" <<std::endl;
     std::unique_ptr<ProverTurboLogicWidget> logic_widget =
         std::make_unique<ProverTurboLogicWidget>(circuit_proving_key.get(), witness.get());
-std::cout << "here4" <<std::endl;
 
     output_state.widgets.emplace_back(std::move(permutation_widget));
     output_state.widgets.emplace_back(std::move(fixed_base_widget));
