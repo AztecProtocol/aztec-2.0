@@ -146,24 +146,56 @@ class ComposerBase {
     ComposerBase()
         : ComposerBase(std::make_unique<FileReferenceStringFactory>("../srs_db"))
     {}
-    ComposerBase(std::unique_ptr<ReferenceStringFactory>&& crs_factory, size_t selector_num=0)
+    ComposerBase(std::unique_ptr<ReferenceStringFactory>&& crs_factory,
+                 size_t selector_num = 0,
+                 size_t size_hint = 0,
+                 std::vector<std::string> selector_names = {})
         : n(0)
         , crs_factory_(std::move(crs_factory))
         , selector_num(selector_num)
         , selectors(selector_num)
-    {}
-    ComposerBase(std::shared_ptr<proving_key> const& p_key, std::shared_ptr<verification_key> const& v_key)
+        , selector_names(selector_names)
+    {
+        for (auto& p : selectors) {
+            p.reserve(size_hint);
+        }
+    }
+    ComposerBase(size_t selector_num = 0,
+                 size_t size_hint = 0,
+                 std::vector<std::string> selector_names = {})
+        : n(0)
+        , crs_factory_(std::make_unique<FileReferenceStringFactory>("../srs_db"))
+        , selector_num(selector_num)
+        , selectors(selector_num)
+        , selector_names(selector_names)
+    {
+        for (auto& p : selectors) {
+            p.reserve(size_hint);
+        }
+    }
+    ComposerBase(std::shared_ptr<proving_key> const& p_key,
+                 std::shared_ptr<verification_key> const& v_key,
+                 size_t selector_num = 0,
+                 size_t size_hint = 0,
+                 std::vector<std::string> selector_names = {})
         : n(0)
         , circuit_proving_key(p_key)
         , circuit_verification_key(v_key)
-    {}
+        , selector_num(p_key->constraint_selectors.size())
+        , selectors(selector_num)
+        , selector_names(selector_names)
+    {
+        for (auto& p : selectors) {
+            p.reserve(size_hint);
+        }
+    }
     ComposerBase(ComposerBase&& other) = default;
     ComposerBase& operator=(ComposerBase&& other) = default;
     virtual ~ComposerBase(){};
 
     virtual size_t get_num_gates() const { return n; }
     virtual size_t get_num_variables() const { return variables.size(); }
-    virtual std::shared_ptr<proving_key> compute_proving_key();
+    std::shared_ptr<proving_key> compute_proving_key(bool mid_domain = false);
     virtual std::shared_ptr<verification_key> compute_verification_key() = 0;
     virtual std::shared_ptr<program_witness> compute_witness() = 0;
 
@@ -220,7 +252,6 @@ class ComposerBase {
 
     template <size_t program_width> void compute_sigma_permutations(proving_key* key);
 
-
   public:
     size_t n;
     std::vector<uint32_t> w_l;
@@ -243,7 +274,7 @@ class ComposerBase {
     std::unique_ptr<ReferenceStringFactory> crs_factory_;
     size_t selector_num;
     std::vector<std::vector<barretenberg::fr>> selectors;
-    std::vector<std::string>  selector_names;
+    std::vector<std::string> selector_names;
 };
 
 extern template void ComposerBase::compute_sigma_permutations<3>(proving_key* key);

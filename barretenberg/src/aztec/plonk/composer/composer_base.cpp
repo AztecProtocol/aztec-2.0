@@ -74,7 +74,7 @@ template <size_t program_width> void ComposerBase::compute_sigma_permutations(pr
     }
 }
 
-std::shared_ptr<proving_key> ComposerBase::compute_proving_key()
+std::shared_ptr<proving_key> ComposerBase::compute_proving_key(bool mid_domain)
 {
     const size_t total_num_gates = n + public_inputs.size();
 
@@ -122,8 +122,10 @@ std::shared_ptr<proving_key> ComposerBase::compute_proving_key()
 
         poly.ifft(circuit_proving_key->small_domain);
         polynomial poly_fft(poly, new_n * 4);
-        poly_fft.coset_fft(circuit_proving_key->large_domain);
-
+        if (mid_domain)
+            poly_fft.coset_fft(circuit_proving_key->mid_domain);
+        else
+            poly_fft.coset_fft(circuit_proving_key->large_domain);
         circuit_proving_key->constraint_selectors.insert({ selector_names[i], std::move(poly) });
         circuit_proving_key->constraint_selector_ffts.insert({ selector_names[i] + "_fft", std::move(poly_fft) });
     }

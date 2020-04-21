@@ -13,7 +13,7 @@ using namespace barretenberg;
 
 namespace waffle {
 
-#define SELECTOR_REFS                                                                                                  \
+#define TURBO_SELECTOR_REFS                                                                                                  \
     auto& q_m = selectors[TurboSelectors::QM];                                                                         \
     auto& q_c = selectors[TurboSelectors::QC];                                                                         \
     auto& q_1 = selectors[TurboSelectors::Q1];                                                                         \
@@ -38,16 +38,12 @@ TurboComposer::TurboComposer(std::string const& crs_path, const size_t size_hint
     : TurboComposer(std::unique_ptr<ReferenceStringFactory>(new FileReferenceStringFactory(crs_path)), size_hint){};
 
 TurboComposer::TurboComposer(std::unique_ptr<ReferenceStringFactory>&& crs_factory, const size_t size_hint)
-    : ComposerBase(std::move(crs_factory), 11)
+    : ComposerBase(std::move(crs_factory), 11, size_hint, TURBO_SEL_NAMES)
 {
-    selector_names = TURBO_SEL_NAMES;
     w_l.reserve(size_hint);
     w_r.reserve(size_hint);
     w_o.reserve(size_hint);
     w_4.reserve(size_hint);
-    for (auto& p : selectors) {
-        p.reserve(size_hint);
-    }
     // q_m.reserve(size_hint);
     // q_1.reserve(size_hint);
     // q_2.reserve(size_hint);
@@ -67,24 +63,19 @@ TurboComposer::TurboComposer(std::unique_ptr<ReferenceStringFactory>&& crs_facto
 TurboComposer::TurboComposer(std::shared_ptr<proving_key> const& p_key,
                              std::shared_ptr<verification_key> const& v_key,
                              size_t size_hint)
-    : ComposerBase(p_key, v_key)
+    : ComposerBase(p_key, v_key, 11, size_hint, TURBO_SEL_NAMES)
 {
-    std::cout << "label" << std::endl;
-    selector_names = TURBO_SEL_NAMES;
     w_l.reserve(size_hint);
     w_r.reserve(size_hint);
     w_o.reserve(size_hint);
     w_4.reserve(size_hint);
-    for (auto& p : selectors) {
-        p.reserve(size_hint);
-    }
     zero_idx = put_constant_variable(fr::zero());
 };
 
 void TurboComposer::create_dummy_gate()
 {
 
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     uint32_t idx = add_variable(fr{ 1, 1, 1, 1 }.to_montgomery_form());
     w_l.emplace_back(idx);
@@ -118,7 +109,7 @@ void TurboComposer::create_dummy_gate()
 
 void TurboComposer::create_add_gate(const add_triple& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -153,7 +144,7 @@ void TurboComposer::create_add_gate(const add_triple& in)
 
 void TurboComposer::create_big_add_gate(const add_quad& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -191,7 +182,7 @@ void TurboComposer::create_big_add_gate(const add_quad& in)
 
 void TurboComposer::create_big_add_gate_with_bit_extraction(const add_quad& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -229,7 +220,7 @@ void TurboComposer::create_big_add_gate_with_bit_extraction(const add_quad& in)
 
 void TurboComposer::create_big_mul_gate(const mul_quad& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -269,7 +260,7 @@ void TurboComposer::create_big_mul_gate(const mul_quad& in)
 // Can be used to normalize a 32-bit addition
 void TurboComposer::create_balanced_add_gate(const add_quad& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -307,7 +298,7 @@ void TurboComposer::create_balanced_add_gate(const add_quad& in)
 
 void TurboComposer::create_mul_gate(const mul_triple& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_LEFT_WIRE);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_RIGHT_WIRE);
@@ -345,7 +336,7 @@ void TurboComposer::create_mul_gate(const mul_triple& in)
 
 void TurboComposer::create_bool_gate(const uint32_t variable_index)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_LEFT_WIRE);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_RIGHT_WIRE);
@@ -380,7 +371,7 @@ void TurboComposer::create_bool_gate(const uint32_t variable_index)
 
 void TurboComposer::create_poly_gate(const poly_triple& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_LEFT_WIRE);
     add_gate_flag(gate_flags.size() - 1, GateFlags::FIXED_RIGHT_WIRE);
@@ -420,7 +411,7 @@ void TurboComposer::create_poly_gate(const poly_triple& in)
 // adds a grumpkin point, from a 2-bit lookup table, into an accumulator point
 void TurboComposer::create_fixed_group_add_gate(const fixed_group_add_quad& in)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -462,7 +453,7 @@ void TurboComposer::create_fixed_group_add_gate(const fixed_group_add_quad& in)
 void TurboComposer::create_fixed_group_add_gate_with_init(const fixed_group_add_quad& in,
                                                           const fixed_group_init_quad& init)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
     w_l.emplace_back(in.a);
     w_r.emplace_back(in.b);
@@ -502,7 +493,7 @@ void TurboComposer::create_fixed_group_add_gate_with_init(const fixed_group_add_
 
 void TurboComposer::fix_witness(const uint32_t witness_index, const barretenberg::fr& witness_value)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     gate_flags.push_back(0);
 
     w_l.emplace_back(witness_index);
@@ -533,7 +524,7 @@ void TurboComposer::fix_witness(const uint32_t witness_index, const barretenberg
 
 std::vector<uint32_t> TurboComposer::create_range_constraint(const uint32_t witness_index, const size_t num_bits)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     ASSERT(static_cast<uint32_t>(variables.size()) > witness_index);
     ASSERT(((num_bits >> 1U) << 1U) == num_bits);
 
@@ -677,7 +668,7 @@ waffle::accumulator_triple TurboComposer::create_logic_constraint(const uint32_t
                                                                   const size_t num_bits,
                                                                   const bool is_xor_gate)
 {
-    SELECTOR_REFS
+    TURBO_SELECTOR_REFS
     ASSERT(static_cast<uint32_t>(variables.size()) > a);
     ASSERT(static_cast<uint32_t>(variables.size()) > b);
     ASSERT(((num_bits >> 1U) << 1U) == num_bits); // no odd number of bits! bad! only quads!
