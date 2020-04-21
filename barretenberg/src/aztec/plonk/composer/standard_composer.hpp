@@ -35,9 +35,17 @@ class StandardComposer : public ComposerBase {
         zero_idx = put_constant_variable(barretenberg::fr::zero());
     };
 
-    // // used for enabling MIMCComposer to access ComposerBase constructor
-    // StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names)
-    //     : ComposerBase(selector_num, size_hint, selector_names){};
+    // used for enabling MIMCComposer to access ComposerBase constructor
+    StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names)
+        : ComposerBase(selector_num, size_hint, selector_names){
+        features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
+        w_l.reserve(size_hint);
+        w_r.reserve(size_hint);
+        w_o.reserve(size_hint);
+        zero_idx = put_constant_variable(barretenberg::fr::zero());
+
+
+        };
 
 
     StandardComposer(std::string const& crs_path, const size_t size_hint = 0)

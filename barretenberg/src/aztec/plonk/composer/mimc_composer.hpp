@@ -1,7 +1,20 @@
 #pragma once
 #include "standard_composer.hpp"
 #include <plonk/transcript/manifest.hpp>
+  enum MimcSelectors
+    {
+        QMIMC_COEFF= 5,
+        QMIMC_SELEC = 6,
+    };
 
+#define MIMC_SELECTOR_REFS                                                                                                  \
+    auto& q_mimc_coefficient = selectors[MimcSelectors::QMIMC_COEFF];                                                                         \
+    auto& q_mimc_selector = selectors[MimcSelectors::QMIMC_SELEC];
+
+#define MIMC_SEL_NAMES                                                                                                \
+    {                                                                                                                  \
+        "q_m", "q_c", "q_1", "q_2", "q_3","q_mimc_coefficient","q_mimc_selector"                    \
+    }
 namespace waffle {
 struct mimc_quadruplet {
     uint32_t x_in_idx;
@@ -13,7 +26,7 @@ struct mimc_quadruplet {
 
 class MiMCComposer : public StandardComposer {
   public:
-    MiMCComposer(const size_t size_hint = 0)
+    MiMCComposer(const size_t size_hint = 0):StandardComposer(5,size_hint, STANDARD_SEL_NAMES)
     {
         q_mimc_coefficient.reserve(size_hint);
         q_mimc_selector.reserve(size_hint);
