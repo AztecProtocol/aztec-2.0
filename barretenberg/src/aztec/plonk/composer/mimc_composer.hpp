@@ -40,7 +40,7 @@ class MiMCComposer : public StandardComposer {
 
     ~MiMCComposer() {}
 
-    std::shared_ptr<proving_key> compute_proving_key() override;
+    std::shared_ptr<proving_key> compute_proving_key() override;// {return StandardComposer::compute_proving_key();};
     std::shared_ptr<verification_key> compute_verification_key() override;
     std::shared_ptr<program_witness> compute_witness() override;
     MiMCVerifier create_verifier();
