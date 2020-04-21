@@ -28,21 +28,30 @@ struct mimc_quadruplet {
 
 class MiMCComposer : public StandardComposer {
   public:
-    MiMCComposer(const size_t size_hint = 0)
-    
+     MiMCComposer(const size_t size_hint = 0)
     {
         MIMC_SELECTOR_REFS
-        w_l.reserve(size_hint);
+        q_mimc_coefficient.reserve(size_hint);
+        q_mimc_selector.reserve(size_hint);
         features |= static_cast<size_t>(Features::MIMC_SELECTORS);
-        q_mimc_coefficient.push_back(fr::zero());
-        q_mimc_selector.push_back(fr::zero());
+        q_mimc_coefficient.push_back(barretenberg::fr::zero());
+        q_mimc_selector.push_back(barretenberg::fr::zero());
     };
+    // MiMCComposer(const size_t size_hint = 0)
+    
+    // {
+    //     MIMC_SELECTOR_REFS
+    //     w_l.reserve(size_hint);
+    //     features |= static_cast<size_t>(Features::MIMC_SELECTORS);
+    //     q_mimc_coefficient.push_back(fr::zero());
+    //     q_mimc_selector.push_back(fr::zero());
+    // };
     MiMCComposer(MiMCComposer&& other) = default;
     MiMCComposer& operator=(MiMCComposer&& other) = default;
 
     ~MiMCComposer() {}
 
-    // std::shared_ptr<proving_key> compute_proving_key() override;
+    std::shared_ptr<proving_key> compute_proving_key() override {return StandardComposer::compute_proving_key();};
     std::shared_ptr<verification_key> compute_verification_key() override;
     std::shared_ptr<program_witness> compute_witness() override;
     MiMCVerifier create_verifier();

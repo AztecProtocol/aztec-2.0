@@ -35,9 +35,9 @@ class StandardComposer : public ComposerBase {
         zero_idx = put_constant_variable(barretenberg::fr::zero());
     };
 
-    // used for enabling MIMCComposer to access ComposerBase constructor
-    StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names)
-        : ComposerBase(selector_num, size_hint, selector_names){};
+    // // used for enabling MIMCComposer to access ComposerBase constructor
+    // StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names)
+    //     : ComposerBase(selector_num, size_hint, selector_names){};
 
 
     StandardComposer(std::string const& crs_path, const size_t size_hint = 0)
@@ -72,7 +72,7 @@ class StandardComposer : public ComposerBase {
 
     void assert_equal_constant(uint32_t const a_idx, barretenberg::fr const& b);
 
-    std::shared_ptr<proving_key> compute_proving_key();
+    virtual std::shared_ptr<proving_key> compute_proving_key();
     virtual std::shared_ptr<verification_key> compute_verification_key() override;
     virtual std::shared_ptr<program_witness> compute_witness() override;
     Verifier create_verifier();
