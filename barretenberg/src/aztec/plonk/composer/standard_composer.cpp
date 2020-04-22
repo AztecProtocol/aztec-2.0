@@ -437,30 +437,23 @@ waffle::accumulator_triple StandardComposer::create_logic_constraint(const uint3
 void StandardComposer::fix_witness(const uint32_t witness_index, const barretenberg::fr& witness_value)
 {
     STANDARD_SELECTOR_REFS
-    std::cout <<"here4" <<std::endl;
     gate_flags.push_back(0);
-    std::cout <<"here4" <<std::endl;
 
     w_l.emplace_back(witness_index);
-    std::cout <<"here4" <<std::endl;
     w_r.emplace_back(zero_idx);
     w_o.emplace_back(zero_idx);
-    std::cout <<"here4" <<std::endl;
     q_m.emplace_back(fr::zero());
     q_1.emplace_back(fr::one());
     q_2.emplace_back(fr::zero());
     q_3.emplace_back(fr::zero());
     q_c.emplace_back(-witness_value);
-    std::cout <<"here4" <<std::endl;
 
     cycle_node left{ static_cast<uint32_t>(n), WireType::LEFT };
 
     ASSERT(wire_copy_cycles.size() > witness_index);
     ASSERT(wire_copy_cycles.size() > zero_idx);
     ASSERT(wire_copy_cycles.size() > zero_idx);
-    std::cout <<"here4" <<std::endl;
     wire_copy_cycles[static_cast<size_t>(witness_index)].emplace_back(left);
-    std::cout <<"here4" <<std::endl;
 
     ++n;
 }
@@ -470,12 +463,9 @@ uint32_t StandardComposer::put_constant_variable(const barretenberg::fr& variabl
     if (constant_variables.count(variable) == 1) {
         return constant_variables.at(variable);
     } else {
-    std::cout <<"here3" <<std::endl;
 
         uint32_t variable_index = add_variable(variable);
-    std::cout <<"here3" <<std::endl;
         fix_witness(variable_index, variable);
-    std::cout <<"here3" <<std::endl;
         constant_variables.insert({ variable, variable_index });
         return variable_index;
     }
@@ -564,7 +554,7 @@ std::shared_ptr<proving_key> StandardComposer::compute_proving_key()
     if (circuit_proving_key) {
         return circuit_proving_key;
     }
- ComposerBase::compute_proving_key(true);
+ ComposerBase::compute_proving_key();
 
     compute_sigma_permutations<3>(circuit_proving_key.get());
     return circuit_proving_key;

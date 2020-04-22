@@ -26,11 +26,9 @@ struct mimc_quadruplet {
 class MiMCComposer : public StandardComposer {
   public:
     MiMCComposer(const size_t size_hint = 0)
-        : StandardComposer(7, size_hint, STANDARD_SEL_NAMES)
+        : StandardComposer(7, size_hint, MIMC_SEL_NAMES,{false,false,false,false,false,true,true})
     {
         MIMC_SELECTOR_REFS
-        // q_mimc_coefficient.reserve(size_hint);
-        // q_mimc_selector.reserve(size_hint);
         features |= static_cast<size_t>(Features::MIMC_SELECTORS);
         q_mimc_coefficient.push_back(barretenberg::fr::zero());
         q_mimc_selector.push_back(barretenberg::fr::zero());
@@ -40,7 +38,7 @@ class MiMCComposer : public StandardComposer {
 
     ~MiMCComposer() {}
 
-    std::shared_ptr<proving_key> compute_proving_key() override;// {return StandardComposer::compute_proving_key();};
+    std::shared_ptr<proving_key> compute_proving_key() override;
     std::shared_ptr<verification_key> compute_verification_key() override;
     std::shared_ptr<program_witness> compute_witness() override;
     MiMCVerifier create_verifier();
@@ -183,9 +181,6 @@ class MiMCComposer : public StandardComposer {
         };
         create_add_gate(gate_coefficients);
     }
-
-    // std::vector<barretenberg::fr> q_mimc_coefficient;
-    // std::vector<barretenberg::fr> q_mimc_selector;
 
     uint32_t current_output_wire = static_cast<uint32_t>(-1);
 

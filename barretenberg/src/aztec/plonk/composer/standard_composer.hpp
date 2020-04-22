@@ -26,7 +26,7 @@ enum StandardSelectors {
 class StandardComposer : public ComposerBase {
   public:
     StandardComposer(const size_t size_hint = 0)
-        : ComposerBase(5, size_hint, STANDARD_SEL_NAMES)
+        : ComposerBase(5, size_hint, STANDARD_SEL_NAMES,{true,true,true,true,true})
     {
         features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
@@ -36,15 +36,13 @@ class StandardComposer : public ComposerBase {
     };
 
     // used for enabling MIMCComposer to access ComposerBase constructor
-    StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names)
-        : ComposerBase(selector_num, size_hint, selector_names){
+    StandardComposer(const size_t selector_num, const size_t size_hint, const std::vector<std::string> selector_names, const std::vector<bool> use_mid_for_selectorfft)
+        : ComposerBase(selector_num, size_hint, selector_names,use_mid_for_selectorfft){
         features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
         w_r.reserve(size_hint);
         w_o.reserve(size_hint);
         zero_idx = put_constant_variable(barretenberg::fr::zero());
-
-
         };
 
 
@@ -53,7 +51,7 @@ class StandardComposer : public ComposerBase {
                            size_hint){};
 
     StandardComposer(std::unique_ptr<ReferenceStringFactory>&& crs_factory, const size_t size_hint = 0)
-        : ComposerBase(std::move(crs_factory), 5, size_hint, STANDARD_SEL_NAMES)
+        : ComposerBase(std::move(crs_factory), 5, size_hint, STANDARD_SEL_NAMES,{true,true,true,true,true})
     {
         features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
@@ -65,7 +63,7 @@ class StandardComposer : public ComposerBase {
     StandardComposer(std::shared_ptr<proving_key> const& p_key,
                      std::shared_ptr<verification_key> const& v_key,
                      size_t size_hint = 0)
-        : ComposerBase(p_key, v_key, 5, size_hint, STANDARD_SEL_NAMES)
+        : ComposerBase(p_key, v_key, 5, size_hint, STANDARD_SEL_NAMES,{true,true,true,true,true})
     {
         features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);

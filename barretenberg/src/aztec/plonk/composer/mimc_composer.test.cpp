@@ -34,7 +34,6 @@ TEST(mimc_composer, test_mimc_gate_proof)
     waffle::Prover prover = composer.preprocess();
 
     waffle::MiMCVerifier verifier = composer.create_verifier();
-
     waffle::plonk_proof proof = prover.construct_proof();
 
     bool result = verifier.verify_proof(proof); // instance, prover.reference_string.SRS_T2);
