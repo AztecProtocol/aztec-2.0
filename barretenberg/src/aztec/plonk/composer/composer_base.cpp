@@ -49,19 +49,14 @@ template <size_t program_width> void ComposerBase::compute_sigma_permutations(pr
         }
     }
 
+    for (size_t i = 0; i < num_public_inputs; ++i) {
+        sigma_mappings[0][i] = static_cast<uint32_t>(i + key->small_domain.size);
+    }
     for (size_t i = 0; i < program_width; ++i) {
         std::string index = std::to_string(i + 1);
         barretenberg::polynomial sigma_polynomial(key->n);
         compute_permutation_lagrange_base_single<standard_settings>(
             sigma_polynomial, sigma_mappings[i], key->small_domain);
-
-        if (i == 0) {
-            barretenberg::fr work_root = barretenberg::fr::one();
-            for (size_t j = 0; j < num_public_inputs; ++j) {
-                sigma_polynomial[j] = work_root;
-                work_root *= key->small_domain.root;
-            }
-        }
 
         barretenberg::polynomial sigma_polynomial_lagrange_base(sigma_polynomial);
         key->permutation_selectors_lagrange_base.insert(
@@ -87,8 +82,7 @@ std::shared_ptr<proving_key> ComposerBase::compute_proving_key()
     circuit_proving_key = std::make_shared<proving_key>(new_n, public_inputs.size(), crs);
 
     for (size_t i = 0; i < public_inputs.size(); ++i) {
-        cycle_node left{ static_cast<uint32_t>(circuit_proving_key->small_domain.size + i - public_inputs.size()),
-                         WireType::LEFT };
+        cycle_node left{ static_cast<uint32_t>(i - public_inputs.size()), WireType::LEFT };
         cycle_node right{ static_cast<uint32_t>(i - public_inputs.size()), WireType::RIGHT };
 
         std::vector<cycle_node>& old_cycle = wire_copy_cycles[static_cast<size_t>(public_inputs[i])];
@@ -123,19 +117,16 @@ std::shared_ptr<proving_key> ComposerBase::compute_proving_key()
         poly.ifft(circuit_proving_key->small_domain);
         polynomial poly_fft(poly, new_n * 4);
 
-
-        if (use_mid_for_selectorfft[i]){
+        if (use_mid_for_selectorfft[i]) {
 
             poly_fft.coset_fft(circuit_proving_key->mid_domain);
         }
-            
+
         else
             poly_fft.coset_fft(circuit_proving_key->large_domain);
         circuit_proving_key->constraint_selectors.insert({ selector_names[i], std::move(poly) });
         circuit_proving_key->constraint_selector_ffts.insert({ selector_names[i] + "_fft", std::move(poly_fft) });
-    
     }
-
 
     return circuit_proving_key;
 }

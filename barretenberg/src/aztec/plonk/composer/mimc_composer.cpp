@@ -10,7 +10,7 @@ using namespace barretenberg;
 namespace waffle {
 void MiMCComposer::create_add_gate(const add_triple& in)
 {
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     if (current_output_wire != static_cast<uint32_t>(-1)) {
         create_noop_gate();
     }
@@ -22,7 +22,7 @@ void MiMCComposer::create_add_gate(const add_triple& in)
 
 void MiMCComposer::create_mul_gate(const mul_triple& in)
 {
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     if (current_output_wire != static_cast<uint32_t>(-1)) {
         create_noop_gate();
     }
@@ -34,7 +34,7 @@ void MiMCComposer::create_mul_gate(const mul_triple& in)
 
 void MiMCComposer::create_bool_gate(const uint32_t variable_index)
 {
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     if (current_output_wire != static_cast<uint32_t>(-1)) {
         create_noop_gate();
     }
@@ -46,7 +46,7 @@ void MiMCComposer::create_bool_gate(const uint32_t variable_index)
 
 void MiMCComposer::create_poly_gate(const poly_triple& in)
 {
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     if (current_output_wire != static_cast<uint32_t>(-1)) {
         create_noop_gate();
     }
@@ -59,7 +59,7 @@ void MiMCComposer::create_poly_gate(const poly_triple& in)
 void MiMCComposer::create_mimc_gate(const mimc_quadruplet& in)
 {
     STANDARD_SELECTOR_REFS
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     if ((current_output_wire != static_cast<uint32_t>(-1)) && (in.x_in_idx != current_output_wire)) {
         create_noop_gate();
     }
@@ -88,7 +88,7 @@ void MiMCComposer::create_mimc_gate(const mimc_quadruplet& in)
 void MiMCComposer::create_noop_gate()
 {
     STANDARD_SELECTOR_REFS
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     q_m.emplace_back(0);
     q_1.emplace_back(0);
     q_2.emplace_back(0);
@@ -119,7 +119,7 @@ void MiMCComposer::create_noop_gate()
 void MiMCComposer::create_dummy_gates()
 {
     STANDARD_SELECTOR_REFS
-        MIMC_SELECTOR_REFS
+    MIMC_SELECTOR_REFS
     StandardComposer::create_dummy_gates();
     q_mimc_coefficient.emplace_back(fr::zero());
     q_mimc_selector.emplace_back(fr::zero());
@@ -223,7 +223,7 @@ std::shared_ptr<proving_key> MiMCComposer::compute_proving_key()
     polynomial poly_q_mimc_selector(new_n);
 
     for (size_t i = 0; i < public_inputs.size(); ++i) {
-        cycle_node left{ static_cast<uint32_t>(circuit_proving_key->small_domain.size - public_inputs.size()), WireType::LEFT };
+        cycle_node left{ static_cast<uint32_t>(i - public_inputs.size()), WireType::LEFT };
         cycle_node right{ static_cast<uint32_t>(i - public_inputs.size()), WireType::RIGHT };
 
         std::vector<cycle_node>& old_cycle = wire_copy_cycles[static_cast<size_t>(public_inputs[i])];
