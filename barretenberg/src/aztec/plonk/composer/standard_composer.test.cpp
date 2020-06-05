@@ -1,4 +1,5 @@
 #include "standard_composer.hpp"
+#include "standard_format.hpp"
 #include <gtest/gtest.h>
 
 using namespace barretenberg;
@@ -415,4 +416,76 @@ TEST(standard_composer, test_unrolled_composer)
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
+}
+TEST(standard_composer, standard_format){
+    waffle::standard_format constraint_system{
+        2,2,1,{}
+    };
+    constraint_system.constraints.emplace_back(waffle::poly_triple{0,0,0,0,0,0,0,0});
+    waffle::StandardComposer composer = waffle::create_circuit(constraint_system);
+    // composer.create_prover();
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, true);
+
+}
+TEST(standard_composer, write_to_file){
+    waffle::standard_format constraint_system{
+        2,2,1,{}
+    };
+    constraint_system.constraints.emplace_back(waffle::poly_triple{0,0,0,0,0,0,0,0});
+    std::ofstream os("system.txt");
+    write(os, constraint_system);
+    os.flush();
+    os.close();
+    std::ifstream is("system.txt");
+    waffle::standard_format constraint_system2;
+    read(is, constraint_system2);
+    waffle::StandardComposer composer = waffle::create_circuit(constraint_system2);
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, true);
+
+}
+TEST(standard_composer,read_witness){
+    waffle::standard_format constraint_system{
+        3,1,1,{}
+    };
+    //encode the constraint x+y=z
+    constraint_system.constraints.emplace_back(waffle::poly_triple{0,1UL,2UL,fr(0),fr(1),fr(1),-1,0});
+    std::ofstream os("system.txt");
+    write(os, constraint_system);
+    os.flush();
+    os.close();
+    std::ifstream is("system.txt");
+
+    waffle::standard_format constraint_system2;
+    read(is, constraint_system2);
+    waffle::StandardComposer composer = waffle::create_circuit(constraint_system2);
+    std::vector<fr> witness = {1,1,2};
+    std::cout << "here" << std::endl;
+    waffle::read_witness(witness, composer); 
+    std::cout << "here" << std::endl;
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, true);
+
 }
