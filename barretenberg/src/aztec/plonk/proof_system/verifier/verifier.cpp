@@ -12,10 +12,17 @@ using namespace barretenberg;
 namespace waffle {
 template <typename program_settings>
 VerifierBase<program_settings>::VerifierBase(std::shared_ptr<verification_key> verifier_key,
-                                             const transcript::Manifest& input_manifest)
+                                             const transcript::Manifest& input_manifest,bool hasPI, 
+                 std::vector<barretenberg::fr> public_inputs)
     : manifest(input_manifest)
     , key(verifier_key)
-{}
+    , hasPI(hasPI)
+    , public_inputs(public_inputs)
+{
+    // if (hasPI)
+        
+    // manifest.add_element("public_inputs", ::to_buffer(public_inputs));
+}
 
 template <typename program_settings>
 VerifierBase<program_settings>::VerifierBase(VerifierBase&& other)
@@ -107,6 +114,8 @@ template <typename program_settings> bool VerifierBase<program_settings>::verify
                              static_cast<uint8_t>(key->num_public_inputs >> 8),
                              static_cast<uint8_t>(key->num_public_inputs) });
     transcript.apply_fiat_shamir("init");
+    if (hasPI)
+        transcript.add_element("public_inputs", ::to_buffer(public_inputs));
     transcript.apply_fiat_shamir("beta");
     transcript.apply_fiat_shamir("alpha");
     transcript.apply_fiat_shamir("z");

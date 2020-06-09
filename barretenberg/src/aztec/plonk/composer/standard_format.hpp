@@ -4,6 +4,8 @@
 #include <plonk/transcript/manifest.hpp>
 #include "standard_composer.hpp"
 #include <common/serialize.hpp>
+#include <plonk/proof_system/proving_key/serialize.hpp>
+#include <plonk/proof_system/verification_key/verification_key.hpp>
 namespace waffle {
 
 typedef size_t variable_index;
@@ -17,48 +19,39 @@ struct standard_format {
     std::vector<poly_triple> constraints;
 };
 
-
-waffle::StandardComposer create_circuit(standard_format& constraint_system)
+waffle::StandardComposer create_circuit(const standard_format& constraint_system)
 {
-std::cout << "in create" << constraint_system.pub_varnum << " " << constraint_system.varnum <<  std::endl;
-if(constraint_system.pub_varnum> constraint_system.varnum)
-std::cout << "too many public inputs!" << std::endl;
+    std::cout << "in create" << constraint_system.pub_varnum << " " << constraint_system.varnum << std::endl;
+    if (constraint_system.pub_varnum > constraint_system.varnum)
+        std::cout << "too many public inputs!" << std::endl;
     waffle::StandardComposer composer = waffle::StandardComposer();
     std::vector<variable_index> var_indices;
-    for (size_t i = 0; i < constraint_system.pub_varnum; i++ ){
+    for (size_t i = 0; i < constraint_system.pub_varnum; i++) {
         var_indices.emplace_back(composer.add_public_variable(0));
     }
 
     for (size_t i = 0; i < constraint_system.varnum - constraint_system.pub_varnum; i++)
         var_indices.emplace_back(composer.add_variable(0));
 
-    for (const auto& constraint : constraint_system.constraints){
-        std::cout<< "a:" << constraint.a << "b:" << (uint32_t)constraint.b << std::endl; 
-        std::cout<< "c:" << constraint.c << "ql:" << constraint.q_l << std::endl; 
+    for (const auto& constraint : constraint_system.constraints) {
+        std::cout << "a:" << constraint.a << "b:" << (uint32_t)constraint.b << std::endl;
+        std::cout << "c:" << constraint.c << "ql:" << constraint.q_l << std::endl;
+        std::cout << "qr:" << constraint.q_r << "qc:" << constraint.q_c << std::endl;
         composer.create_poly_gate(constraint);
     }
-        
-    
+
     return composer;
-    // std::shared_ptr<proving_key> pk = composer.compute_proving_key();
-    // std::shared_ptr<verification_key> vk = composer.compute_verification_key();
 }
-// void create_circuit_and_write_to_file(standard_format& constraint_system, std::ostream& os){
-// auto composer = create_circuit(constraint_system);
-// }
-// void read(std::istream& is, poly_triple& constraint){
-// read(is, constraint.a);
-// read(is, constraint.b);
-// read(is, constraint.c);
-// read(is, constraint.q_l);
-// read(is, constraint.q_r);
-// read(is, constraint.q_o);
-// read(is, constraint.q_m);
-// read(is, constraint.q_c);
+void write_proving_and_verifying_key(const StandardComposer& composer)
+{
+    std::ofstream os("pk.txt");
+    write(os, *composer.circuit_proving_key);
+    os.close();
 
-// }
-
-
+    std::ofstream os2("vk.txt");
+    write(os2, *composer.circuit_verification_key);
+    os2.close();
+}
 template <typename B> inline void read(B& buf, poly_triple& constraint)
 {
     ::read(buf, constraint.a);
@@ -99,37 +92,52 @@ template <typename B> inline void write(B& buf, standard_format const& data)
     write(buf, data.constraints);
 }
 
-// standard_format read_constraint_system_from_file(std::ifstream& is)
+// template <typename B, typename Params> inline void write(B& buf, std::vector<field<Params>> const& value)
 // {
-//     standard_format constraint_system;
-//     read(is, constraint_system);
-//     std::cout << "in read:" << constraint.b << std::endl;
-//     return constraint_system;
-// }
-
-// void write_constraint_system_to_file(std::ofstream& os,standard_format constraint_system)
-// {
-
-//     write(os, constraint_system.varnum);
-//     write(os, constraint_system.pub_varnum);
-//     write(os, constraint_system.constraint_num);
-//     for (size_t i = 0; i < constraint_system.constraint_num; i++) {
-//         poly_triple constraint;
-//         write(os, constraint);
-//         constraint_system.constraints.emplace_back(constraint);
-        
+//     for (size_t i = 0; i < value.size(); i++) {
+//         write(buf, value[i]);
 //     }
 // }
-void read_witness(std::istream& is, StandardComposer& composer, size_t witness_length){
-   for(size_t i =0; i < witness_length ; i++) {
-       barretenberg::fr val;
-       read(is, val);
-       composer.variables[i]=val;
-   }
+void read_witness(std::istream& is, StandardComposer& composer)
+{
+    read(is,composer.variables);
+    // for (size_t i = 0; i < witness_length; i++) {
+    //     barretenberg::fr val;
+    //     read(is, val);
+    //     std::cout << "val" << val << std::endl;
+    //     composer.variables[i] = val;
+    // }
+    std::cout << "readwit" << std::endl;
 }
-void read_witness(std::vector<barretenberg::fr> witness, StandardComposer& composer){
-   for(size_t i =0; i < witness.size() ; i++) {
-       composer.variables[i]=witness[i];
-   }
+void read_witness(std::vector<barretenberg::fr> witness, StandardComposer& composer)
+{
+        for (size_t i = 0; i < witness.size(); i++) {
+        composer.variables[i] = witness[i];
+    }
+}
+std::shared_ptr<proving_key> read_proving_key_from_file(size_t total_num_gates)
+{
+    auto crs_factory = std::make_unique<FileReferenceStringFactory>("../srs_db");
+
+    size_t log2_n = static_cast<size_t>(numeric::get_msb(total_num_gates + 1));
+    if ((1UL << log2_n) != (total_num_gates + 1)) {
+        ++log2_n;
+    }
+    size_t new_n = 1UL << log2_n;
+        // const size_t subgroup_size = ComposerBase::get_circuit_subgroup_size(total_num_gates + StandardComposer::NUM_RESERVED_GATES);
+    auto crs = crs_factory->get_prover_crs(new_n);
+    proving_key_data data;
+    std::ifstream is("pk.txt");
+    read(static_cast<std::istream&>(is), data);
+    return std::make_shared<proving_key>(std::move(data), crs);
+}
+std::shared_ptr<verification_key> read_verification_key_from_file()
+{
+    auto crs_factory = std::make_unique<FileReferenceStringFactory>("../srs_db");
+auto ver_crs = crs_factory->get_verifier_crs();
+    verification_key_data data;
+    std::ifstream is("vk.txt");
+    read(static_cast<std::istream&>(is), data);
+    return std::make_shared<verification_key>(std::move(data), ver_crs);
 }
 } // namespace waffle

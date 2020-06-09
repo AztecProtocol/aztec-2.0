@@ -1,8 +1,11 @@
 #include "standard_composer.hpp"
 #include "standard_format.hpp"
 #include <gtest/gtest.h>
+#include <common/streams.hpp>
+#include <strstream>
 
 using namespace barretenberg;
+using namespace waffle;
 
 namespace {
 auto& engine = numeric::random::get_debug_engine();
@@ -461,10 +464,12 @@ TEST(standard_composer, write_to_file){
 }
 TEST(standard_composer,read_witness){
     waffle::standard_format constraint_system{
-        3,1,1,{}
+        4,0,2,{}
     };
     //encode the constraint x+y=z
-    constraint_system.constraints.emplace_back(waffle::poly_triple{0,1UL,2UL,fr(0),fr(1),fr(1),-1,0});
+    constraint_system.constraints.emplace_back(waffle::poly_triple{1,2,3,fr(0),fr(1),fr(1),-1,0});
+    //encode the constraint yz=w
+    constraint_system.constraints.emplace_back(waffle::poly_triple{2,3,4,fr(1),0,0,-1,0});
     std::ofstream os("system.txt");
     write(os, constraint_system);
     os.flush();
@@ -473,9 +478,12 @@ TEST(standard_composer,read_witness){
 
     waffle::standard_format constraint_system2;
     read(is, constraint_system2);
-    waffle::StandardComposer composer = waffle::create_circuit(constraint_system2);
-    std::vector<fr> witness = {1,1,2};
-    std::cout << "here" << std::endl;
+    waffle::StandardComposer composer;
+    std::cout << "n" << composer.n <<   std::endl;
+    composer = waffle::create_circuit(constraint_system2);
+    // extra 0 because of put constant variable in composer constructor
+    std::vector<fr> witness = {0,1,1,2,2};
+    std::cout << "n" << composer.n <<   std::endl;
     waffle::read_witness(witness, composer); 
     std::cout << "here" << std::endl;
     waffle::Prover prover = composer.preprocess();
@@ -487,5 +495,56 @@ TEST(standard_composer,read_witness){
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
+    std::ofstream os2("witness.txt");
+       std::cout << " before write" << std::endl;
+    //    for(size_t i =0; i<witness.size();i++)
+    //         write(os2,witness[i]);
+    write(os2,witness);
+    os2.flush();
+    os2.close();
+    auto composer2 = waffle::create_circuit(constraint_system2);
+    std::ifstream is2("witness.txt");
+    waffle::read_witness(is2, composer2); 
+    is2.close();
+    waffle::Prover prover2 = composer2.preprocess();
+    waffle::Verifier verifier2 = composer2.create_verifier();
+    waffle::plonk_proof proof2 = prover2.construct_proof();
+    bool result2 = verifier2.verify_proof(proof2);
 
+    EXPECT_EQ(result2, true);
+    waffle::write_proving_and_verifying_key(composer2);
+
+    // auto vk1 = *composer2.compute_verification_key();
+
+    // waffle::verification_key_data data1 = { 
+    //     (uint32_t)vk1.n,
+    //     (uint32_t)vk1.num_public_inputs,
+    //     vk1.constraint_selectors,
+    //     vk1.permutation_selectors
+    // };
+
+    // std::stringstream s;
+    // write(s, vk1);
+    // // std::cout << buf << std::endl;
+
+    // waffle::verification_key_data data;
+    // read(s, data);
+
+    // ASSERT_EQ(data1, data);
+
+// waffle::verification_key_data data;
+    // auto crs_factory = std::make_unique<waffle::FileReferenceStringFactory>("../srs_db");
+    // auto ver_crs = crs_factory->get_verifier_crs();
+    // read(static_cast<std::istream&>(is), data);
+    // auto vk = std::make_shared<waffle::verification_key>(std::move(data), ver_crs);
+    // waffle::Verifier verifier3(vk, waffle::StandardComposer::create_manifest(0));
+    // bool result3 = verifier3.verify_proof(proof2);
+    // EXPECT_EQ(result3, true);
+
+// auto pk=waffle::read_proving_key_from_file(constraint_system2.constraint_num);
+auto vk=waffle::read_verification_key_from_file();
+waffle::Verifier verifier3(vk,waffle::StandardComposer::create_manifest(0));
+    bool result3 = verifier3.verify_proof(proof2);
+    EXPECT_EQ(result3, true);
+// waffle::StandardComposer composer3(pk,vk);
 }

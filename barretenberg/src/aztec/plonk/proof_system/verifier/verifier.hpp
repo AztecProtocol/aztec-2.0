@@ -10,7 +10,8 @@ template <typename program_settings> class VerifierBase {
 
   public:
     VerifierBase(std::shared_ptr<verification_key> verifier_key = nullptr,
-                 const transcript::Manifest& manifest = transcript::Manifest({}));
+                 const transcript::Manifest& manifest = transcript::Manifest({}),bool hasPI=false, 
+                 std::vector<fr> public_inputs={});
     VerifierBase(VerifierBase&& other);
     VerifierBase(const VerifierBase& other) = delete;
     VerifierBase& operator=(const VerifierBase& other) = delete;
@@ -21,6 +22,8 @@ template <typename program_settings> class VerifierBase {
     transcript::Manifest manifest;
 
     std::shared_ptr<verification_key> key;
+    bool hasPI;
+    std::vector<barretenberg::fr> public_inputs;
 };
 
 extern template class VerifierBase<unrolled_standard_verifier_settings>;
