@@ -6,6 +6,12 @@
 #include <common/serialize.hpp>
 #include <plonk/proof_system/proving_key/serialize.hpp>
 #include <plonk/proof_system/verification_key/verification_key.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/foreach.hpp>
+
+using boost::property_tree::ptree;
+using boost::property_tree::read_json;
 namespace waffle {
 
 typedef size_t variable_index;
@@ -108,6 +114,65 @@ void read_witness(std::istream& is, StandardComposer& composer)
     //     composer.variables[i] = val;
     // }
     std::cout << "readwit" << std::endl;
+}
+void read_witness_from_file(const std::string filename)
+{
+std::ifstream json(filename);
+    ptree pt2;
+    std::stringstream ss;
+    ss << json.rdbuf();
+    // read_json(ss, pt2);
+    // std::string readWitness = pt2.get<std::string> ("witness");
+    // std::cout << "witness" << readWitness;
+// std::stringstream ss;
+        // ss << "{ \"v\": [1, 2, 3, 4, 5 ]  }";
+
+        boost::property_tree::ptree pt;
+        boost::property_tree::read_json(ss, pt);
+
+        BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("witness"))
+        {
+            assert(v.first.empty()); // array elements have no names
+            std::cout << v.second.data() << std::endl;
+            // fr a((int)v.second.data());
+        }
+    // for (size_t i = 0; i < witness_length; i++) {
+    //     barretenberg::fr val;
+    //     read(is, val);
+    //     std::cout << "val" << val << std::endl;
+    //     composer.variables[i] = val;
+    // }
+    std::cout << "readwit" << std::endl;
+}
+void read_constraint_system_from_file(const std::string filename)
+{
+std::ifstream json(filename);
+    ptree pt;
+    std::stringstream ss;
+    ss << json.rdbuf();
+
+        boost::property_tree::read_json(ss, pt);
+
+    std::string varnum = pt.get<std::string> ("varnum");
+    std::cout << varnum << std::endl;
+
+    std::string pubvarnum = pt.get<std::string> ("pubvarnum");
+    std::cout << pubvarnum << std::endl;
+    // auto i = std::stoi(pubvarnum);
+    // fr a(i);
+    std::string constraintnum = pt.get<std::string> ("constraintnum");
+    std::cout << constraintnum << std::endl;
+         BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("constraints"))
+        {
+            assert(v.first.empty()); // array elements have no names
+            BOOST_FOREACH(auto b,v.second){
+auto e = b.second.data();
+            std::cout << "inner loop:" << e << std::endl;
+            auto c = std::stoi(e);
+            fr d(c);
+            std::cout <<d << std::endl;
+            }
+        }
 }
 void read_witness(std::vector<barretenberg::fr> witness, StandardComposer& composer)
 {

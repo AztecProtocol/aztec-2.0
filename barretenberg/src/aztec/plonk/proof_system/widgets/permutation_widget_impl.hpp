@@ -571,7 +571,6 @@ Field VerifierPermutationWidget<Field, Group, Transcript>::compute_quotient_eval
     }
 
     std::vector<Field> public_inputs = transcript.get_field_element_vector("public_inputs");
-
     Field public_input_delta = compute_public_input_delta<Field>(public_inputs, beta, gamma, key->domain.root);
     T0 = wire_evaluations[key->program_width - 1] + gamma;
     sigma_contribution *= T0;

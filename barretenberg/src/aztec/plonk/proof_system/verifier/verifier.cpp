@@ -19,9 +19,6 @@ VerifierBase<program_settings>::VerifierBase(std::shared_ptr<verification_key> v
     , hasPI(hasPI)
     , public_inputs(public_inputs)
 {
-    // if (hasPI)
-        
-    // manifest.add_element("public_inputs", ::to_buffer(public_inputs));
 }
 
 template <typename program_settings>
@@ -114,8 +111,14 @@ template <typename program_settings> bool VerifierBase<program_settings>::verify
                              static_cast<uint8_t>(key->num_public_inputs >> 8),
                              static_cast<uint8_t>(key->num_public_inputs) });
     transcript.apply_fiat_shamir("init");
-    if (hasPI)
-        transcript.add_element("public_inputs", ::to_buffer(public_inputs));
+    if (hasPI){
+    std::vector<fr> publicinp= transcript.get_field_element_vector("public_inputs");
+    for(size_t i =0; i<public_inputs.size(); i++)
+        if(public_inputs[i]!=publicinp[i]){
+            printf("wrong pubic input");
+            return false;
+        }
+    }
     transcript.apply_fiat_shamir("beta");
     transcript.apply_fiat_shamir("alpha");
     transcript.apply_fiat_shamir("z");

@@ -3,6 +3,9 @@
 #include <gtest/gtest.h>
 #include <common/streams.hpp>
 #include <strstream>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
+#include <boost/foreach.hpp>
 
 using namespace barretenberg;
 using namespace waffle;
@@ -514,37 +517,54 @@ TEST(standard_composer,read_witness){
     EXPECT_EQ(result2, true);
     waffle::write_proving_and_verifying_key(composer2);
 
-    // auto vk1 = *composer2.compute_verification_key();
-
-    // waffle::verification_key_data data1 = { 
-    //     (uint32_t)vk1.n,
-    //     (uint32_t)vk1.num_public_inputs,
-    //     vk1.constraint_selectors,
-    //     vk1.permutation_selectors
-    // };
-
-    // std::stringstream s;
-    // write(s, vk1);
-    // // std::cout << buf << std::endl;
-
-    // waffle::verification_key_data data;
-    // read(s, data);
-
-    // ASSERT_EQ(data1, data);
-
-// waffle::verification_key_data data;
-    // auto crs_factory = std::make_unique<waffle::FileReferenceStringFactory>("../srs_db");
-    // auto ver_crs = crs_factory->get_verifier_crs();
-    // read(static_cast<std::istream&>(is), data);
-    // auto vk = std::make_shared<waffle::verification_key>(std::move(data), ver_crs);
-    // waffle::Verifier verifier3(vk, waffle::StandardComposer::create_manifest(0));
-    // bool result3 = verifier3.verify_proof(proof2);
-    // EXPECT_EQ(result3, true);
-
-// auto pk=waffle::read_proving_key_from_file(constraint_system2.constraint_num);
 auto vk=waffle::read_verification_key_from_file();
 waffle::Verifier verifier3(vk,waffle::StandardComposer::create_manifest(0));
     bool result3 = verifier3.verify_proof(proof2);
     EXPECT_EQ(result3, true);
 // waffle::StandardComposer composer3(pk,vk);
+}
+TEST(standard_composer,use_pub_inputs){
+    waffle::standard_format constraint_system{
+        4,1,2,{}
+    };
+    //encode the constraint x+y=z
+    constraint_system.constraints.emplace_back(waffle::poly_triple{1,2,3,fr(0),fr(1),fr(1),-1,0});
+    //encode the constraint yz=w
+    constraint_system.constraints.emplace_back(waffle::poly_triple{2,3,4,fr(1),0,0,-1,0});
+    std::ofstream os("system.txt");
+    write(os, constraint_system);
+    os.flush();
+    os.close();
+    std::ifstream is("system.txt");
+
+    waffle::standard_format constraint_system2;
+    read(is, constraint_system2);
+    waffle::StandardComposer composer;
+    std::cout << "n" << composer.n <<   std::endl;
+    composer = waffle::create_circuit(constraint_system2);
+    // extra 0 because of put constant variable in composer constructor
+
+
+    std::vector<fr> witness = {0,2,2,4,8};
+    std::cout << "n" << composer.n <<   std::endl;
+    waffle::read_witness(witness, composer); 
+    std::cout << "here" << std::endl;
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, true);
+    waffle::write_proving_and_verifying_key(composer);
+
+auto vk=waffle::read_verification_key_from_file();
+std::vector<fr> pub_input ={2};
+waffle::Verifier verifier2(vk,waffle::StandardComposer::create_manifest(1),true,pub_input);
+    bool result2 = verifier2.verify_proof(proof);
+    EXPECT_EQ(result2, true);
+    waffle::read_witness_from_file("witness2.txt");
+    waffle::read_constraint_system_from_file("constraintsystem.json");
 }
