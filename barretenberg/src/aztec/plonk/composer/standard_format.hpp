@@ -115,12 +115,13 @@ void read_witness(std::istream& is, StandardComposer& composer)
     // }
     std::cout << "readwit" << std::endl;
 }
-void read_witness_from_file(const std::string filename)
+std::vector<fr> read_witness_from_file(const std::string filename)
 {
 std::ifstream json(filename);
     ptree pt2;
     std::stringstream ss;
     ss << json.rdbuf();
+    std::vector<fr> res;
     // read_json(ss, pt2);
     // std::string readWitness = pt2.get<std::string> ("witness");
     // std::cout << "witness" << readWitness;
@@ -134,17 +135,13 @@ std::ifstream json(filename);
         {
             assert(v.first.empty()); // array elements have no names
             std::cout << v.second.data() << std::endl;
-            // fr a((int)v.second.data());
+             res.emplace_back(fr((int)v.second.data()));
         }
-    // for (size_t i = 0; i < witness_length; i++) {
-    //     barretenberg::fr val;
-    //     read(is, val);
-    //     std::cout << "val" << val << std::endl;
-    //     composer.variables[i] = val;
-    // }
+
     std::cout << "readwit" << std::endl;
+    return res;
 }
-void read_constraint_system_from_file(const std::string filename)
+standard_format read_constraint_system_from_file(const std::string filename)
 {
 std::ifstream json(filename);
     ptree pt;
@@ -162,6 +159,9 @@ std::ifstream json(filename);
     // fr a(i);
     std::string constraintnum = pt.get<std::string> ("constraintnum");
     std::cout << constraintnum << std::endl;
+    waffle::standard_format res{
+        4,0,2,{}
+    };
          BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("constraints"))
         {
             assert(v.first.empty()); // array elements have no names

@@ -523,32 +523,12 @@ waffle::Verifier verifier3(vk,waffle::StandardComposer::create_manifest(0));
     EXPECT_EQ(result3, true);
 // waffle::StandardComposer composer3(pk,vk);
 }
-TEST(standard_composer,use_pub_inputs){
-    waffle::standard_format constraint_system{
-        4,1,2,{}
-    };
-    //encode the constraint x+y=z
-    constraint_system.constraints.emplace_back(waffle::poly_triple{1,2,3,fr(0),fr(1),fr(1),-1,0});
-    //encode the constraint yz=w
-    constraint_system.constraints.emplace_back(waffle::poly_triple{2,3,4,fr(1),0,0,-1,0});
-    std::ofstream os("system.txt");
-    write(os, constraint_system);
-    os.flush();
-    os.close();
-    std::ifstream is("system.txt");
-
-    waffle::standard_format constraint_system2;
-    read(is, constraint_system2);
-    waffle::StandardComposer composer;
-    std::cout << "n" << composer.n <<   std::endl;
-    composer = waffle::create_circuit(constraint_system2);
-    // extra 0 because of put constant variable in composer constructor
-
-
-    std::vector<fr> witness = {0,2,2,4,8};
+TEST(standard_composer,prove_and_verify_from_file){
+    waffle::standard_format constraint_system = waffle::read_constraint_system_from_file("constraintsystem.json");
+    composer = waffle::create_circuit(constraint_system);
+    std::vector<fr> witness = waffle::read_witness_from_file("witness.json");
     std::cout << "n" << composer.n <<   std::endl;
     waffle::read_witness(witness, composer); 
-    std::cout << "here" << std::endl;
     waffle::Prover prover = composer.preprocess();
 
     waffle::Verifier verifier = composer.create_verifier();
@@ -566,5 +546,4 @@ waffle::Verifier verifier2(vk,waffle::StandardComposer::create_manifest(1),true,
     bool result2 = verifier2.verify_proof(proof);
     EXPECT_EQ(result2, true);
     waffle::read_witness_from_file("witness2.txt");
-    waffle::read_constraint_system_from_file("constraintsystem.json");
 }
