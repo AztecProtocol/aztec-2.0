@@ -135,7 +135,7 @@ std::ifstream json(filename);
         {
             assert(v.first.empty()); // array elements have no names
             std::cout << v.second.data() << std::endl;
-             res.emplace_back(fr((int)v.second.data()));
+             res.emplace_back(fr(std::stoi(v.second.data())));
         }
 
     std::cout << "readwit" << std::endl;
@@ -147,32 +147,42 @@ std::ifstream json(filename);
     ptree pt;
     std::stringstream ss;
     ss << json.rdbuf();
-
         boost::property_tree::read_json(ss, pt);
 
     std::string varnum = pt.get<std::string> ("varnum");
-    std::cout << varnum << std::endl;
+    int varnumi = std::stoi(varnum);
 
     std::string pubvarnum = pt.get<std::string> ("pubvarnum");
-    std::cout << pubvarnum << std::endl;
-    // auto i = std::stoi(pubvarnum);
-    // fr a(i);
+    auto pubvarnumi = std::stoi(pubvarnum);
     std::string constraintnum = pt.get<std::string> ("constraintnum");
+    auto constraintnumi = std::stoi(constraintnum);
     std::cout << constraintnum << std::endl;
     waffle::standard_format res{
-        4,0,2,{}
+       (uint32_t)varnumi,(uint32_t)pubvarnumi,(uint32_t)constraintnumi,{}
     };
          BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("constraints"))
         {
-            assert(v.first.empty()); // array elements have no names
-            BOOST_FOREACH(auto b,v.second){
-auto e = b.second.data();
-            std::cout << "inner loop:" << e << std::endl;
-            auto c = std::stoi(e);
-            fr d(c);
-            std::cout <<d << std::endl;
-            }
+
+    std::string a = v.second.get<std::string> ("a");
+    uint32_t ai = (uint32_t)std::stoi(a);
+    std::string b = v.second.get<std::string> ("b");
+    auto bi = (uint32_t)std::stoi(b);
+    std::string c = v.second.get<std::string> ("c");
+    auto ci = (uint32_t)std::stoi(c);
+    std::string ql = v.second.get<std::string> ("ql");
+    fr qli(std::stoi(ql));
+    std::string qr = v.second.get<std::string> ("qr");
+    fr qri(std::stoi(qr));
+    std::string qo = v.second.get<std::string> ("qo");
+    fr qoi(std::stoi(qo));
+    std::string qm = v.second.get<std::string> ("qm");
+    fr qmi(std::stoi(qm));
+    std::string qc = v.second.get<std::string> ("qc");
+    fr qci(std::stoi(qc));
+    std::cout << ai<< bi << ci << qli << qri << qoi << qmi << qci << std::endl;
+    res.constraints.emplace_back(poly_triple{ai,bi,ci,qmi,qli,qri,qoi,qci});
         }
+return res;
 }
 void read_witness(std::vector<barretenberg::fr> witness, StandardComposer& composer)
 {
