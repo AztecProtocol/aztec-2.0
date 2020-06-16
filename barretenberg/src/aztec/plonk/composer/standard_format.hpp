@@ -27,7 +27,6 @@ struct standard_format {
 
 waffle::StandardComposer create_circuit(const standard_format& constraint_system)
 {
-    std::cout << "in create" << constraint_system.pub_varnum << " " << constraint_system.varnum << std::endl;
     if (constraint_system.pub_varnum > constraint_system.varnum)
         std::cout << "too many public inputs!" << std::endl;
     waffle::StandardComposer composer = waffle::StandardComposer();
@@ -40,9 +39,6 @@ waffle::StandardComposer create_circuit(const standard_format& constraint_system
         var_indices.emplace_back(composer.add_variable(0));
 
     for (const auto& constraint : constraint_system.constraints) {
-        std::cout << "a:" << constraint.a << "b:" << (uint32_t)constraint.b << std::endl;
-        std::cout << "c:" << constraint.c << "ql:" << constraint.q_l << std::endl;
-        std::cout << "qr:" << constraint.q_r << "qc:" << constraint.q_c << std::endl;
         composer.create_poly_gate(constraint);
     }
 
@@ -107,38 +103,24 @@ template <typename B> inline void write(B& buf, standard_format const& data)
 void read_witness(std::istream& is, StandardComposer& composer)
 {
     read(is,composer.variables);
-    // for (size_t i = 0; i < witness_length; i++) {
-    //     barretenberg::fr val;
-    //     read(is, val);
-    //     std::cout << "val" << val << std::endl;
-    //     composer.variables[i] = val;
-    // }
-    std::cout << "readwit" << std::endl;
 }
-std::vector<fr> read_witness_from_file(const std::string filename)
+std::vector<fr> read_witness_from_file(const std::string filename, StandardComposer& composer)
 {
 std::ifstream json(filename);
     ptree pt2;
     std::stringstream ss;
     ss << json.rdbuf();
     std::vector<fr> res;
-    // read_json(ss, pt2);
-    // std::string readWitness = pt2.get<std::string> ("witness");
-    // std::cout << "witness" << readWitness;
-// std::stringstream ss;
-        // ss << "{ \"v\": [1, 2, 3, 4, 5 ]  }";
 
         boost::property_tree::ptree pt;
         boost::property_tree::read_json(ss, pt);
 
+composer.variables.clear();
         BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("witness"))
         {
             assert(v.first.empty()); // array elements have no names
-            std::cout << v.second.data() << std::endl;
-             res.emplace_back(fr(std::stoi(v.second.data())));
+             composer.variables.emplace_back(fr(std::stoi(v.second.data())));
         }
-
-    std::cout << "readwit" << std::endl;
     return res;
 }
 standard_format read_constraint_system_from_file(const std::string filename)
@@ -156,7 +138,6 @@ std::ifstream json(filename);
     auto pubvarnumi = std::stoi(pubvarnum);
     std::string constraintnum = pt.get<std::string> ("constraintnum");
     auto constraintnumi = std::stoi(constraintnum);
-    std::cout << constraintnum << std::endl;
     waffle::standard_format res{
        (uint32_t)varnumi,(uint32_t)pubvarnumi,(uint32_t)constraintnumi,{}
     };
@@ -179,7 +160,6 @@ std::ifstream json(filename);
     fr qmi(std::stoi(qm));
     std::string qc = v.second.get<std::string> ("qc");
     fr qci(std::stoi(qc));
-    std::cout << ai<< bi << ci << qli << qri << qoi << qmi << qci << std::endl;
     res.constraints.emplace_back(poly_triple{ai,bi,ci,qmi,qli,qri,qoi,qci});
         }
 return res;

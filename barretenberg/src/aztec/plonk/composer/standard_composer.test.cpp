@@ -526,7 +526,7 @@ waffle::Verifier verifier3(vk,waffle::StandardComposer::create_manifest(0));
 TEST(standard_composer,prove_and_verify_from_file){
     waffle::standard_format constraint_system = waffle::read_constraint_system_from_file("constraintsystem.json");
 auto composer = waffle::create_circuit(constraint_system);
-    std::vector<fr> witness = waffle::read_witness_from_file("witness.json");
+     waffle::read_witness_from_file("witness.json",composer);
     waffle::Prover prover = composer.preprocess();
 
     waffle::Verifier verifier = composer.create_verifier();
@@ -536,12 +536,4 @@ auto composer = waffle::create_circuit(constraint_system);
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
-//     waffle::write_proving_and_verifying_key(composer);
-
-// auto vk=waffle::read_verification_key_from_file();
-// std::vector<fr> pub_input ={2};
-// waffle::Verifier verifier2(vk,waffle::StandardComposer::create_manifest(1),true,pub_input);
-//     bool result2 = verifier2.verify_proof(proof);
-//     EXPECT_EQ(result2, true);
-//     waffle::read_witness_from_file("witness2.txt");
 }

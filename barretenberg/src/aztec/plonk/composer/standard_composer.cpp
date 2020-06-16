@@ -524,9 +524,7 @@ UnrolledProver StandardComposer::create_unrolled_prover()
 Prover StandardComposer::create_prover()
 {
 
-std::cout << "n:" << n <<std::endl;
     compute_proving_key();
-std::cout << "n:" << n <<std::endl;
     compute_witness();
     Prover output_state(circuit_proving_key, witness, create_manifest(public_inputs.size()));
 
