@@ -60,6 +60,11 @@ void write_proof_to_file(const plonk_proof& proof)
     write(os, proof.proof_data);
     os.close();
 }
+void read_proof_from_file(plonk_proof& proof)
+{
+    std::ifstream is("proof.data");
+    read(is, proof.proof_data);
+}
 template <typename B> inline void read(B& buf, poly_triple& constraint)
 {
     ::read(buf, constraint.a);

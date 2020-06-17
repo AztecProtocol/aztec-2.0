@@ -553,4 +553,9 @@ waffle::write_proof_to_file(proof);
 TEST(standard_composer,verify_proof_from_file){
 auto vk=waffle::read_verification_key_from_file();
 waffle::Verifier verifier =waffle::make_verifier_with_public_input_from_file("PI.json",vk);
+waffle::plonk_proof proof;
+waffle::read_proof_from_file(proof);
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, true);
 }
