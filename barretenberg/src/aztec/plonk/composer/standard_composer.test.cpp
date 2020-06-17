@@ -537,3 +537,20 @@ auto composer = waffle::create_circuit(constraint_system);
 
     EXPECT_EQ(result, true);
 }
+TEST(standard_composer,write_proof_and_keys_to_file){
+    waffle::standard_format constraint_system = waffle::read_constraint_system_from_file("constraintsystem.json");
+auto composer = waffle::create_circuit(constraint_system);
+     waffle::read_witness_from_file("witness.json",composer);
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    waffle::write_proving_and_verifying_key(composer);
+waffle::write_proof_to_file(proof);
+}
+TEST(standard_composer,verify_proof_from_file){
+auto vk=waffle::read_verification_key_from_file();
+waffle::Verifier verifier =waffle::make_verifier_with_public_input_from_file("PI.json",vk);
+}

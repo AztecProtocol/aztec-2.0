@@ -46,13 +46,19 @@ waffle::StandardComposer create_circuit(const standard_format& constraint_system
 }
 void write_proving_and_verifying_key(const StandardComposer& composer)
 {
-    std::ofstream os("pk.txt");
+    std::ofstream os("pk.data");
     write(os, *composer.circuit_proving_key);
     os.close();
 
-    std::ofstream os2("vk.txt");
+    std::ofstream os2("vk.data");
     write(os2, *composer.circuit_verification_key);
     os2.close();
+}
+void write_proof_to_file(const plonk_proof& proof)
+{
+    std::ofstream os("proof.data");
+    write(os, proof.proof_data);
+    os.close();
 }
 template <typename B> inline void read(B& buf, poly_triple& constraint)
 {
@@ -94,79 +100,87 @@ template <typename B> inline void write(B& buf, standard_format const& data)
     write(buf, data.constraints);
 }
 
-// template <typename B, typename Params> inline void write(B& buf, std::vector<field<Params>> const& value)
-// {
-//     for (size_t i = 0; i < value.size(); i++) {
-//         write(buf, value[i]);
-//     }
-// }
-void read_witness(std::istream& is, StandardComposer& composer)
-{
-    read(is,composer.variables);
-}
 std::vector<fr> read_witness_from_file(const std::string filename, StandardComposer& composer)
 {
-std::ifstream json(filename);
+    std::ifstream json(filename);
     ptree pt2;
     std::stringstream ss;
     ss << json.rdbuf();
     std::vector<fr> res;
 
-        boost::property_tree::ptree pt;
-        boost::property_tree::read_json(ss, pt);
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(ss, pt);
 
-composer.variables.clear();
-        BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("witness"))
-        {
-            assert(v.first.empty()); // array elements have no names
-             composer.variables.emplace_back(fr(std::stoi(v.second.data())));
-        }
+    composer.variables.clear();
+    BOOST_FOREACH (boost::property_tree::ptree::value_type& v, pt.get_child("witness")) {
+        assert(v.first.empty()); // array elements have no names
+        composer.variables.emplace_back(fr(std::stoi(v.second.data())));
+    }
     return res;
+}
+Verifier make_verifier_with_public_input_from_file(const std::string filename,
+                                                          const std::shared_ptr<verification_key> vk)
+{
+    std::ifstream json(filename);
+    ptree pt2;
+    std::stringstream ss;
+    ss << json.rdbuf();
+    std::vector<fr> res;
+
+    boost::property_tree::ptree pt;
+    boost::property_tree::read_json(ss, pt);
+
+    std::string pubvarnum = pt.get<std::string>("pubvarnum");
+    auto pubvarnumi = (uint32_t)std::stoi(pubvarnum);
+    std::vector<fr> PI;
+    BOOST_FOREACH (boost::property_tree::ptree::value_type& v, pt.get_child("PI")) {
+        assert(v.first.empty()); // array elements have no names
+        PI.emplace_back(fr(std::stoi(v.second.data())));
+    }
+    
+    return Verifier(vk,waffle::StandardComposer::create_manifest(pubvarnumi), true, PI);
 }
 standard_format read_constraint_system_from_file(const std::string filename)
 {
-std::ifstream json(filename);
+    std::ifstream json(filename);
     ptree pt;
     std::stringstream ss;
     ss << json.rdbuf();
-        boost::property_tree::read_json(ss, pt);
+    boost::property_tree::read_json(ss, pt);
 
-    std::string varnum = pt.get<std::string> ("varnum");
+    std::string varnum = pt.get<std::string>("varnum");
     int varnumi = std::stoi(varnum);
 
-    std::string pubvarnum = pt.get<std::string> ("pubvarnum");
+    std::string pubvarnum = pt.get<std::string>("pubvarnum");
     auto pubvarnumi = std::stoi(pubvarnum);
-    std::string constraintnum = pt.get<std::string> ("constraintnum");
+    std::string constraintnum = pt.get<std::string>("constraintnum");
     auto constraintnumi = std::stoi(constraintnum);
-    waffle::standard_format res{
-       (uint32_t)varnumi,(uint32_t)pubvarnumi,(uint32_t)constraintnumi,{}
-    };
-         BOOST_FOREACH(boost::property_tree::ptree::value_type &v, pt.get_child("constraints"))
-        {
+    waffle::standard_format res{ (uint32_t)varnumi, (uint32_t)pubvarnumi, (uint32_t)constraintnumi, {} };
+    BOOST_FOREACH (boost::property_tree::ptree::value_type& v, pt.get_child("constraints")) {
 
-    std::string a = v.second.get<std::string> ("a");
-    uint32_t ai = (uint32_t)std::stoi(a);
-    std::string b = v.second.get<std::string> ("b");
-    auto bi = (uint32_t)std::stoi(b);
-    std::string c = v.second.get<std::string> ("c");
-    auto ci = (uint32_t)std::stoi(c);
-    std::string ql = v.second.get<std::string> ("ql");
-    fr qli(std::stoi(ql));
-    std::string qr = v.second.get<std::string> ("qr");
-    fr qri(std::stoi(qr));
-    std::string qo = v.second.get<std::string> ("qo");
-    fr qoi(std::stoi(qo));
-    std::string qm = v.second.get<std::string> ("qm");
-    fr qmi(std::stoi(qm));
-    std::string qc = v.second.get<std::string> ("qc");
-    fr qci(std::stoi(qc));
-    res.constraints.emplace_back(poly_triple{ai,bi,ci,qmi,qli,qri,qoi,qci});
-        }
-return res;
+        std::string a = v.second.get<std::string>("a");
+        uint32_t ai = (uint32_t)std::stoi(a);
+        std::string b = v.second.get<std::string>("b");
+        auto bi = (uint32_t)std::stoi(b);
+        std::string c = v.second.get<std::string>("c");
+        auto ci = (uint32_t)std::stoi(c);
+        std::string ql = v.second.get<std::string>("ql");
+        fr qli(std::stoi(ql));
+        std::string qr = v.second.get<std::string>("qr");
+        fr qri(std::stoi(qr));
+        std::string qo = v.second.get<std::string>("qo");
+        fr qoi(std::stoi(qo));
+        std::string qm = v.second.get<std::string>("qm");
+        fr qmi(std::stoi(qm));
+        std::string qc = v.second.get<std::string>("qc");
+        fr qci(std::stoi(qc));
+        res.constraints.emplace_back(poly_triple{ ai, bi, ci, qmi, qli, qri, qoi, qci });
+    }
+    return res;
 }
 void read_witness(std::vector<barretenberg::fr> witness, StandardComposer& composer)
 {
-        for (size_t i = 0; i < witness.size(); i++) {
+    for (size_t i = 0; i < witness.size(); i++) {
         composer.variables[i] = witness[i];
     }
 }
@@ -179,20 +193,25 @@ std::shared_ptr<proving_key> read_proving_key_from_file(size_t total_num_gates)
         ++log2_n;
     }
     size_t new_n = 1UL << log2_n;
-        // const size_t subgroup_size = ComposerBase::get_circuit_subgroup_size(total_num_gates + StandardComposer::NUM_RESERVED_GATES);
+    // const size_t subgroup_size = ComposerBase::get_circuit_subgroup_size(total_num_gates +
+    // StandardComposer::NUM_RESERVED_GATES);
     auto crs = crs_factory->get_prover_crs(new_n);
     proving_key_data data;
-    std::ifstream is("pk.txt");
+    std::ifstream is("pk.data");
     read(static_cast<std::istream&>(is), data);
     return std::make_shared<proving_key>(std::move(data), crs);
 }
 std::shared_ptr<verification_key> read_verification_key_from_file()
 {
     auto crs_factory = std::make_unique<FileReferenceStringFactory>("../srs_db");
-auto ver_crs = crs_factory->get_verifier_crs();
+    auto ver_crs = crs_factory->get_verifier_crs();
     verification_key_data data;
-    std::ifstream is("vk.txt");
+    std::ifstream is("vk.data");
     read(static_cast<std::istream&>(is), data);
     return std::make_shared<verification_key>(std::move(data), ver_crs);
+}
+void read_witness(std::istream& is, StandardComposer& composer)
+{
+    read(is, composer.variables);
 }
 } // namespace waffle
