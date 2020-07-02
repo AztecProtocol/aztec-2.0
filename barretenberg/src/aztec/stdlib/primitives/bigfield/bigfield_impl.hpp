@@ -42,13 +42,19 @@ bigfield<C, T>::bigfield(const field_t<C>& low_bits, const field_t<C>& high_bits
     field_t<C> limb_3(context);
     field_t<C> high_prime_limb(context);
     field_t<C> low_prime_limb(context);
+    // check if field element is not constant
     if (low_bits.witness_index != UINT32_MAX) {
+        // Enforce that low_bits indeed only contains 2*NUM_LIMB_BITS bits
         std::vector<uint32_t> low_accumulator =
             context->create_range_constraint(low_bits.witness_index, static_cast<size_t>(NUM_LIMB_BITS * 2));
+        // Turbo plonk range constraint returns an array of partial sums, midpoint will happen to hold the big limb value
         limb_1.witness_index = low_accumulator[static_cast<size_t>((NUM_LIMB_BITS / 2) - 1)];
+        // values are too small for wrapping, so can get limb value mod r
         low_prime_limb.witness_index = low_accumulator[static_cast<size_t>((NUM_LIMB_BITS)-1)];
+        // We can get the first half bits of low_bits from the variables we already created
         limb_0 = (low_prime_limb - (limb_1 * shift_1));
     } else {
+        // test 
         uint256_t slice_0 = uint256_t(low_bits.additive_constant).slice(0, NUM_LIMB_BITS);
         uint256_t slice_1 = uint256_t(low_bits.additive_constant).slice(NUM_LIMB_BITS, 2 * NUM_LIMB_BITS);
         limb_0 = field_t(context, barretenberg::fr(slice_0));
