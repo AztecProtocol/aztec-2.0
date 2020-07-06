@@ -62,10 +62,13 @@ bigfield<C, T>::bigfield(const field_t<C>& low_bits, const field_t<C>& high_bits
         low_prime_limb = field_t<C>(context, barretenberg::fr(low_bits.additive_constant));
     }
 
+// If we wish to continue working with this element with lazy reductions - i.e. not moding out again after each addition
+// we apply a more limited range - 2^s for smallest s such that p<2^s (this is the case can_overflow == false)
     uint64_t num_last_limb_bits = (can_overflow) ? NUM_LIMB_BITS : NUM_LAST_LIMB_BITS;
     if ((num_last_limb_bits & 1ULL) == 1ULL) {
         ++num_last_limb_bits;
     }
+    // We create the high limb values similar to the low limb ones above 
     const uint64_t num_high_limb_bits = NUM_LIMB_BITS + num_last_limb_bits;
     if (high_bits.witness_index != UINT32_MAX) {
         std::vector<uint32_t> high_accumulator =
@@ -300,6 +303,10 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator*(const
         remainder = bigfield(ctx, uint256_t(remainder_value.lo));
         return remainder;
     } else {
+        //when writing a*b = q*p + r we wish to enforce r<2^s for smallest s such that p<2^s
+        // hence the second constructor call is with can_overflow=false. This will allow using r in more additions mod 2^t
+        // without needing to apply the mod, where t=4*NUM_LIMB_BITS
+
         quotient = bigfield(witness_t(ctx, fr(quotient_value.slice(0, NUM_LIMB_BITS * 2).lo)),
                             witness_t(ctx, fr(quotient_value.slice(NUM_LIMB_BITS * 2, NUM_LIMB_BITS * 4).lo)),
                             true);
@@ -772,6 +779,7 @@ template <typename C, typename T> void bigfield<C, T>::self_reduce() const
     prime_basis_limb = remainder.prime_basis_limb;
 }
 
+// See explanation at https://hackmd.io/LoEG5nRHQe-PvstVaD51Yw?view
 template <typename C, typename T>
 void bigfield<C, T>::evaluate_multiply_add(const bigfield& left,
                                            const bigfield& to_mul,
@@ -846,6 +854,9 @@ void bigfield<C, T>::evaluate_multiply_add(const bigfield& left,
     const field_t d3 = left.binary_basis_limbs[0].element.madd(
         to_mul.binary_basis_limbs[3].element, quotient.binary_basis_limbs[0].element * neg_modulus_limbs[3]);
 
+
+// We wish to show that left*right - quotient*remainder = 0 mod 2^t, we do this by
+
     const field_t r0 = left.binary_basis_limbs[0].element.madd(
         to_mul.binary_basis_limbs[0].element, quotient.binary_basis_limbs[0].element * neg_modulus_limbs[0]);
 
@@ -899,6 +910,8 @@ void bigfield<C, T>::evaluate_multiply_add(const bigfield& left,
     if ((remainders.size() & 1UL) == 1UL) {
         linear_terms += -remainders[remainders.size() - 1].prime_basis_limb;
     }
+
+    // This is where we show our identity is zero mod r (to use CRT we show it's zero mod r and mod 2^t)
     field_t<C>::evaluate_polynomial_identity(
         left.prime_basis_limb, to_mul.prime_basis_limb, quotient.prime_basis_limb * neg_prime, linear_terms);
 
