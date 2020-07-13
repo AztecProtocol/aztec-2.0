@@ -30,7 +30,9 @@ bigfield<C, T>::bigfield(C* parent_context, const uint256_t& value)
                           Limb(barretenberg::fr(value.slice(NUM_LIMB_BITS * 2, NUM_LIMB_BITS * 3))),
                           Limb(barretenberg::fr(value.slice(NUM_LIMB_BITS * 3, NUM_LIMB_BITS * 4))) }
     , prime_basis_limb(context, value)
-{}
+{
+    ASSERT(value<modulus);
+}
 
 template <typename C, typename T>
 bigfield<C, T>::bigfield(const field_t<C>& low_bits, const field_t<C>& high_bits, const bool can_overflow)
@@ -47,14 +49,15 @@ bigfield<C, T>::bigfield(const field_t<C>& low_bits, const field_t<C>& high_bits
         // Enforce that low_bits indeed only contains 2*NUM_LIMB_BITS bits
         std::vector<uint32_t> low_accumulator =
             context->create_range_constraint(low_bits.witness_index, static_cast<size_t>(NUM_LIMB_BITS * 2));
-        // Turbo plonk range constraint returns an array of partial sums, midpoint will happen to hold the big limb value
+        // Turbo plonk range constraint returns an array of partial sums, midpoint will happen to hold the big limb
+        // value
         limb_1.witness_index = low_accumulator[static_cast<size_t>((NUM_LIMB_BITS / 2) - 1)];
         // values are too small for wrapping, so can get limb value mod r
         low_prime_limb.witness_index = low_accumulator[static_cast<size_t>((NUM_LIMB_BITS)-1)];
         // We can get the first half bits of low_bits from the variables we already created
         limb_0 = (low_prime_limb - (limb_1 * shift_1));
     } else {
-        // test 
+        // test
         uint256_t slice_0 = uint256_t(low_bits.additive_constant).slice(0, NUM_LIMB_BITS);
         uint256_t slice_1 = uint256_t(low_bits.additive_constant).slice(NUM_LIMB_BITS, 2 * NUM_LIMB_BITS);
         limb_0 = field_t(context, barretenberg::fr(slice_0));
@@ -62,13 +65,14 @@ bigfield<C, T>::bigfield(const field_t<C>& low_bits, const field_t<C>& high_bits
         low_prime_limb = field_t<C>(context, barretenberg::fr(low_bits.additive_constant));
     }
 
-// If we wish to continue working with this element with lazy reductions - i.e. not moding out again after each addition
-// we apply a more limited range - 2^s for smallest s such that p<2^s (this is the case can_overflow == false)
+    // If we wish to continue working with this element with lazy reductions - i.e. not moding out again after each
+    // addition we apply a more limited range - 2^s for smallest s such that p<2^s (this is the case can_overflow ==
+    // false)
     uint64_t num_last_limb_bits = (can_overflow) ? NUM_LIMB_BITS : NUM_LAST_LIMB_BITS;
     if ((num_last_limb_bits & 1ULL) == 1ULL) {
         ++num_last_limb_bits;
     }
-    // We create the high limb values similar to the low limb ones above 
+    // We create the high limb values similar to the low limb ones above
     const uint64_t num_high_limb_bits = NUM_LIMB_BITS + num_last_limb_bits;
     if (high_bits.witness_index != UINT32_MAX) {
         std::vector<uint32_t> high_accumulator =
@@ -195,6 +199,7 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator+(const
 {
     reduction_check();
     other.reduction_check();
+    // needed cause a constant doesn't have a valid context
     C* ctx = context ? context : other.context;
 
     bigfield result(ctx);
@@ -214,6 +219,7 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator+(const
     return result;
 }
 
+//to make sure we don't go to negative values, add p before subtracting other
 template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator-(const bigfield& other) const
 {
     C* ctx = context ? context : other.context;
@@ -248,6 +254,7 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator-(const
         other.binary_basis_limbs[3].maximum_value + (uint256_t(1) << (limb_2_borrow_shift - NUM_LIMB_BITS));
 
     uint512_t constant_to_add = modulus_u512;
+    //add a large enough multiple of p to not get negative result in subtraction
     while (constant_to_add.slice(NUM_LIMB_BITS * 3, NUM_LIMB_BITS * 4).lo <= limb_3_maximum_value) {
         constant_to_add += modulus_u512;
     }
@@ -303,9 +310,9 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator*(const
         remainder = bigfield(ctx, uint256_t(remainder_value.lo));
         return remainder;
     } else {
-        //when writing a*b = q*p + r we wish to enforce r<2^s for smallest s such that p<2^s
-        // hence the second constructor call is with can_overflow=false. This will allow using r in more additions mod 2^t
-        // without needing to apply the mod, where t=4*NUM_LIMB_BITS
+        // when writing a*b = q*p + r we wish to enforce r<2^s for smallest s such that p<2^s
+        // hence the second constructor call is with can_overflow=false. This will allow using r in more additions mod
+        // 2^t without needing to apply the mod, where t=4*NUM_LIMB_BITS
 
         quotient = bigfield(witness_t(ctx, fr(quotient_value.slice(0, NUM_LIMB_BITS * 2).lo)),
                             witness_t(ctx, fr(quotient_value.slice(NUM_LIMB_BITS * 2, NUM_LIMB_BITS * 4).lo)),
@@ -318,10 +325,13 @@ template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator*(const
     return remainder;
 }
 
+
+// TODO: reduce code duplication
 template <typename C, typename T> bigfield<C, T> bigfield<C, T>::operator/(const bigfield& other) const
 {
     reduction_check();
     other.reduction_check();
+  //TODO: method for returning correct context and checking there aren't multiple
     C* ctx = context ? context : other.context;
     // a / b = c
     // => c * b = a mod p
@@ -608,6 +618,7 @@ bigfield<C, T> bigfield<C, T>::conditional_select(const bigfield& other, const b
         static_cast<field_t<C>>(predicate).madd(other.prime_basis_limb - prime_basis_limb, prime_basis_limb);
 
     bigfield result(ctx);
+    // the maximum of the maximal values of elements is large enough
     result.binary_basis_limbs[0] =
         Limb(binary_limb_0, std::max(binary_basis_limbs[0].maximum_value, other.binary_basis_limbs[0].maximum_value));
     result.binary_basis_limbs[1] =
@@ -620,9 +631,11 @@ bigfield<C, T> bigfield<C, T>::conditional_select(const bigfield& other, const b
     return result;
 }
 
+
+//reduce values to s bits if limbs have gotten to big (e.g. after addition chain)
 template <typename C, typename T> void bigfield<C, T>::reduction_check() const
 {
-    if (is_constant()) {
+    if (is_constant()) {//this seems not a reduction check, but actually computing the reduction
         uint256_t reduced_value = (get_value() % modulus_u512).lo;
         bigfield reduced(context, uint256_t(reduced_value));
         binary_basis_limbs[0] = reduced.binary_basis_limbs[0];
@@ -643,13 +656,20 @@ template <typename C, typename T> void bigfield<C, T>::reduction_check() const
     }
 }
 
+// create a version with mod 2^t element part in [0,p-1]
+// should we call this assert if it actually creates new vars satisfying assert?
+// After reducing to size 2^s, we check p-a is non-negative as integer.
+// We perform subtraction using carries on blocks of size 2^b. The operations insde the blocks are done mod r
+// Including the effect of carries the operation inside each limb is in the range [-2^b-1,2^{b+1}]
+// Assuming this values are all distinct mod r, which happens e.g. if r/2>2^{b+1}, then if all limb values are non-negative
+// at the end of subtraction, we know the subtraction result is positive as integers and a<p
 template <typename C, typename T> void bigfield<C, T>::assert_is_in_field() const
 {
     if (is_constant()) {
         return;
     }
 
-    self_reduce();
+    self_reduce();//this method in particular enforces limb vals are <2^b - needed for logic described above
     uint256_t value = get_value().lo;
     constexpr uint256_t modulus_value = modulus_u512.lo;
 
@@ -667,7 +687,7 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_in_field() cons
     field_t<C> modulus_1(context, modulus_1_value);
     field_t<C> modulus_2(context, modulus_2_value);
     field_t<C> modulus_3(context, modulus_3_value);
-
+//where are you constraining the borrows to be correct? (maybe not needed)
     bool_t<C> borrow_0(witness_t<C>(context, borrow_0_value));
     bool_t<C> borrow_1(witness_t<C>(context, borrow_1_value));
     bool_t<C> borrow_2(witness_t<C>(context, borrow_2_value));
@@ -688,37 +708,14 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_in_field() cons
     context->create_range_constraint(r3.witness_index, static_cast<size_t>(NUM_LIMB_BITS));
 }
 
-template <typename C, typename T> void bigfield<C, T>::assert_equal(const bigfield& other) const
-{
-    const auto get_overload_count = [target_modulus = modulus_u512](const uint512_t& maximum_value) {
-        uint512_t target = target_modulus;
-        size_t overload_count = 0;
-        while (target < maximum_value) {
-            ++overload_count;
-            target += target_modulus;
-        }
-        return overload_count;
-    };
-    const size_t lhs_overload_count = get_overload_count(get_maximum_value());
-    const size_t rhs_overload_count = get_overload_count(other.get_maximum_value());
-    field_t<C> prime_basis(get_context(), barretenberg::fr(modulus));
-
-    field_t<C> diff = prime_basis_limb - other.prime_basis_limb;
-    field_t<C> prime_basis_accumulator = prime_basis;
-
-    field_t<C> comparison_product = diff;
-    for (size_t i = 0; i < rhs_overload_count; ++i) {
-        comparison_product = comparison_product * (diff + prime_basis_accumulator);
-        prime_basis_accumulator += prime_basis;
-    }
-    prime_basis_accumulator = prime_basis;
-    for (size_t i = 0; i < lhs_overload_count; ++i) {
-        comparison_product = comparison_product * (diff - prime_basis_accumulator);
-        prime_basis_accumulator += prime_basis;
-    }
-    comparison_product.assert_is_zero();
-}
-
+// construct a proof that points are different mod p, when they are different mod r
+// WARNING: This method doesn't have perfect completeness - for points equal mod r (or with certain difference kp mod r)
+// but different mod p, you can't construct a proof.
+// Note also that the number of constraints depends on how much the values have overflown beyond p
+// e.g. due to an addition chain
+// The function is based on the following. Suppose a-b = 0 mod p. Then a-b = k*p for k in a range [-R,L]
+// such that L*p>= a, R*p>=b. And also a-b = k*p mod r for such k. Thus we can verify a-b is non-zero mod p
+// by taking the product of such values (a-b-kp) and showing it's non-zero mod r
 template <typename C, typename T> void bigfield<C, T>::assert_is_not_equal(const bigfield& other) const
 {
     const auto get_overload_count = [target_modulus = modulus_u512](const uint512_t& maximum_value) {
@@ -734,20 +731,22 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_not_equal(const
     const size_t rhs_overload_count = get_overload_count(other.get_maximum_value());
 
     field_t<C> diff = prime_basis_limb - other.prime_basis_limb;
-    field_t<C> prime_basis(get_context(), barretenberg::fr(modulus));
+    field_t<C> prime_basis(get_context(), modulus); // assuming fr=field_t
     field_t<C> prime_basis_accumulator = prime_basis;
     for (size_t i = 0; i < lhs_overload_count; ++i) {
-        diff = diff * (diff + prime_basis_accumulator);
+        diff = diff * (diff - prime_basis_accumulator);
         prime_basis_accumulator += prime_basis;
     }
     prime_basis_accumulator = prime_basis;
     for (size_t i = 0; i < rhs_overload_count; ++i) {
-        diff = diff * (diff - prime_basis_accumulator);
+        diff = diff * (diff + prime_basis_accumulator);
         prime_basis_accumulator += prime_basis;
     }
     diff.assert_is_not_zero();
 }
 
+// We reduce an element's mod 2^t representation (t=4*NUM_LIMB_BITS) to size 2^s for smallest s with 2^s>p
+// This is much cheaper than actually reducing mod p and suffices for addition chains (where we just need not to overflow 2^t)
 template <typename C, typename T> void bigfield<C, T>::self_reduce() const
 {
     const auto [quotient_value, remainder_value] = get_value().divmod(target_basis.modulus);
@@ -764,15 +763,15 @@ template <typename C, typename T> void bigfield<C, T>::self_reduce() const
     quotient.binary_basis_limbs[2] = Limb(field_t<C>(context, barretenberg::fr(0)), 0);
     quotient.binary_basis_limbs[3] = Limb(field_t<C>(context, barretenberg::fr(0)), 0);
     quotient.prime_basis_limb = quotient_limb;
-
+    // this constructor with can_overflow=false will create remainder of size<2^s
     bigfield remainder = bigfield(
         witness_t(context, fr(remainder_value.slice(0, NUM_LIMB_BITS * 2).lo)),
         witness_t(context, fr(remainder_value.slice(NUM_LIMB_BITS * 2, NUM_LIMB_BITS * 3 + NUM_LAST_LIMB_BITS).lo)));
-
+    
     evaluate_multiply_add(*this, one(), {}, quotient, { remainder });
     uint512_t test = get_value() % prime_basis.modulus;
-    barretenberg::fr binary_basis_mod_prime_basis(test.lo);
-    binary_basis_limbs[0] = remainder.binary_basis_limbs[0];
+    barretenberg::fr binary_basis_mod_prime_basis(test.lo);//variable not used
+    binary_basis_limbs[0] = remainder.binary_basis_limbs[0];//how is this method const?
     binary_basis_limbs[1] = remainder.binary_basis_limbs[1];
     binary_basis_limbs[2] = remainder.binary_basis_limbs[2];
     binary_basis_limbs[3] = remainder.binary_basis_limbs[3];
@@ -854,8 +853,12 @@ void bigfield<C, T>::evaluate_multiply_add(const bigfield& left,
     const field_t d3 = left.binary_basis_limbs[0].element.madd(
         to_mul.binary_basis_limbs[3].element, quotient.binary_basis_limbs[0].element * neg_modulus_limbs[3]);
 
-
-// We wish to show that left*right - quotient*remainder = 0 mod 2^t, we do this by
+    // We wish to show that left*right - quotient*remainder = 0 mod 2^t, we do this by collecting the limb products
+    // into two separate variables - carry_lo and carry_hi, which are still small enough not to wrap mod r
+    // Their first t/2 bits will equal, respectively, the first and second t/2 bits of the expresssion
+    // Thus it will suffice to check that each of them begins with t/2 zeroes. We do this by in fact assigning
+    // to these variables those expressions divided by 2^{t/2}. Since we have bounds on their ranage that are smaller
+    // than r, We can range check the divisions by the original range bounds divided by 2^{t/2}
 
     const field_t r0 = left.binary_basis_limbs[0].element.madd(
         to_mul.binary_basis_limbs[0].element, quotient.binary_basis_limbs[0].element * neg_modulus_limbs[0]);

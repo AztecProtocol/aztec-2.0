@@ -163,10 +163,11 @@ template <typename Composer, typename T> class bigfield {
     static constexpr uint512_t get_maximum_unreduced_value()
     {
         uint1024_t maximum_product = uint1024_t(binary_basis.modulus) * uint1024_t(prime_basis.modulus);
-        // TODO: compute square root
+        // TODO: compute square root (the following is a lower bound, so good for the CRT use)
         uint64_t maximum_product_bits = maximum_product.get_msb() - 1;
         return (uint512_t(1) << (maximum_product_bits >> 1)) - uint512_t(1);
     }
+    // this 110 is dependent of r?
     static constexpr uint256_t get_maximum_unreduced_limb_value() { return uint256_t(1) << 110; }
 
     Composer* context;
