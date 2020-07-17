@@ -708,6 +708,30 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_in_field() cons
     context->create_range_constraint(r3.witness_index, static_cast<size_t>(NUM_LIMB_BITS));
 }
 
+// check elements are equal mod p by proving their integer difference is a multiple of p.
+// This relies on the minus operator for a-b increasing a by a multiple of p large enough so diff is non-negative
+template <typename C, typename T> void bigfield<C, T>::assert_equal(const bigfield& other) const
+{
+    C* ctx = this->context ? this->context : other.context;
+
+    bigfield diff = *this - other;
+    const uint512_t diff_val = diff.get_value();
+    const uint512_t modulus(target_basis.modulus);
+
+    const auto [quotient_512, remainder_512] = (diff_val).divmod(modulus);
+     std::cout << remainder_512 << std::endl;
+    if(remainder_512!= 0)
+     std::cout << "remainder not zero!" << std::endl;
+    ASSERT(remainder_512==0);
+    bigfield quotient;
+
+        quotient = bigfield(witness_t(ctx, fr(quotient_512.slice(0, NUM_LIMB_BITS * 2).lo)),
+                            witness_t(ctx, fr(quotient_512.slice(NUM_LIMB_BITS * 2, NUM_LIMB_BITS * 4).lo)),
+                            true);
+    evaluate_multiply_add(diff, {one()}, {}, quotient, { zero() });
+}
+
+
 // construct a proof that points are different mod p, when they are different mod r
 // WARNING: This method doesn't have perfect completeness - for points equal mod r (or with certain difference kp mod r)
 // but different mod p, you can't construct a proof.
@@ -731,7 +755,7 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_not_equal(const
     const size_t rhs_overload_count = get_overload_count(other.get_maximum_value());
 
     field_t<C> diff = prime_basis_limb - other.prime_basis_limb;
-    field_t<C> prime_basis(get_context(), modulus); // assuming fr=field_t
+    field_t<C> prime_basis(get_context(), modulus);
     field_t<C> prime_basis_accumulator = prime_basis;
     for (size_t i = 0; i < lhs_overload_count; ++i) {
         diff = diff * (diff - prime_basis_accumulator);
@@ -747,6 +771,7 @@ template <typename C, typename T> void bigfield<C, T>::assert_is_not_equal(const
 
 // We reduce an element's mod 2^t representation (t=4*NUM_LIMB_BITS) to size 2^s for smallest s with 2^s>p
 // This is much cheaper than actually reducing mod p and suffices for addition chains (where we just need not to overflow 2^t)
+// We also reduce any "spillage" inside the first 3 limbs, so that their range is NUM_LIMB_BITS and not larger
 template <typename C, typename T> void bigfield<C, T>::self_reduce() const
 {
     const auto [quotient_value, remainder_value] = get_value().divmod(target_basis.modulus);
@@ -755,6 +780,7 @@ template <typename C, typename T> void bigfield<C, T>::self_reduce() const
 
     uint512_t maximum_quotient_size = get_maximum_value() / target_basis.modulus;
     uint64_t maximum_quotient_bits = maximum_quotient_size.get_msb() + 1;
+    //TODO: implicit assumption here - NUM_LIMB_BITS large enough for all the quotient
     uint32_t quotient_limb_index = context->add_variable(barretenberg::fr(quotient_value.lo));
     field_t<C> quotient_limb = field_t<C>::from_witness_index(context, quotient_limb_index);
     context->create_range_constraint(quotient_limb.witness_index, static_cast<size_t>(maximum_quotient_bits));

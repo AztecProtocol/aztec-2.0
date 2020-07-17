@@ -145,7 +145,7 @@ template <typename Composer, typename T> class bigfield {
     bigfield conditional_select(const bigfield& other, const bool_t<Composer>& predicate) const;
 
     void assert_is_in_field() const;
-    void assert_equal(const bigfield& other) const;
+void assert_equal(const bigfield& other) const;
     void assert_is_not_equal(const bigfield& other) const;
 
     void self_reduce() const;
@@ -155,6 +155,11 @@ template <typename Composer, typename T> class bigfield {
     static bigfield one()
     {
         bigfield result(nullptr, uint256_t(1));
+        return result;
+    }
+    static bigfield zero()
+    {
+        bigfield result(nullptr, uint256_t(0));
         return result;
     }
 

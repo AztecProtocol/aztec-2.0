@@ -217,7 +217,7 @@ template <class Params> struct alignas(32) field {
      *
      * To find k1, k2, We use the extended euclidean algorithm to find 4 short scalars [a1, a2], [b1, b2] such that
      * modulus = (a1 * b2) - (b1 * a2)
-     * We then compube scalars c1 = round(b2 * k / r), c2 = round(b1 * k / r), where
+     * We then compute scalars c1 = round(b2 * k / r), c2 = round(b1 * k / r), where
      * k1 = (c1 * a1) + (c2 * a2), k2 = -((c1 * b1) + (c2 * b2))
      * We pre-compute scalars g1 = (2^256 * b1) / n, g2 = (2^256 * b2) / n, to avoid having to perform long division
      * on 512-bit scalars
