@@ -145,7 +145,7 @@ template <typename Composer, typename T> class bigfield {
     bigfield conditional_select(const bigfield& other, const bool_t<Composer>& predicate) const;
 
     void assert_is_in_field() const;
-void assert_equal(const bigfield& other) const;
+    void assert_equal(const bigfield& other) const;
     void assert_is_not_equal(const bigfield& other) const;
 
     void self_reduce() const;
@@ -185,6 +185,7 @@ void assert_equal(const bigfield& other) const;
                                       const std::vector<bigfield>& to_add,
                                       const bigfield& quotient,
                                       const std::vector<bigfield>& remainders);
+    static void verify_mod(const bigfield& left, const bigfield& quotient, const bigfield& remainder);
 
     static void evaluate_square_add(const bigfield& left,
                                     const std::vector<bigfield>& to_add,
