@@ -1,9 +1,12 @@
 #include "../utils/permutation.hpp"
-#include "../widgets/arithmetic_widget.hpp"
+#include "../widgets/transition_widgets/arithmetic_widget.hpp"
+#include "../widgets/random_widgets/permutation_widget.hpp"
+
 #include "prover.hpp"
 #include <gtest/gtest.h>
 #include <plonk/reference_string/file_reference_string.hpp>
 #include <polynomials/polynomial_arithmetic.hpp>
+#include <plonk/proof_system/commitment_scheme/kate_commitment_scheme.hpp>
 
 /*
 ```
@@ -73,6 +76,7 @@ transcript::Manifest create_manifest(const size_t num_public_inputs = 0)
     const size_t public_input_size = fr_size * num_public_inputs;
     const transcript::Manifest output = transcript::Manifest(
         { transcript::Manifest::RoundManifest({ { "circuit_size", 4, false } }, "init", 1),
+          transcript::Manifest::RoundManifest({}, "eta", 0),
           transcript::Manifest::RoundManifest({ { "public_inputs", public_input_size, false },
                                                 { "W_1", g1_size, false },
                                                 { "W_2", g1_size, false },
@@ -82,15 +86,15 @@ transcript::Manifest create_manifest(const size_t num_public_inputs = 0)
           transcript::Manifest::RoundManifest({ { "Z", g1_size, false } }, "alpha", 1),
           transcript::Manifest::RoundManifest(
               { { "T_1", g1_size, false }, { "T_2", g1_size, false }, { "T_3", g1_size, false } }, "z", 1),
-          transcript::Manifest::RoundManifest({ { "w_1", fr_size, false },
-                                                { "w_2", fr_size, false },
-                                                { "w_3", fr_size, false },
-                                                { "w_3_omega", fr_size, false },
-                                                { "z_omega", fr_size, false },
-                                                { "sigma_1", fr_size, false },
-                                                { "sigma_2", fr_size, false },
-                                                { "r", fr_size, false },
-                                                { "t", fr_size, true } },
+          transcript::Manifest::RoundManifest({ { "w_1", fr_size, false, 1 },
+                                                { "w_2", fr_size, false, 2 },
+                                                { "w_3", fr_size, false, 3 },
+                                                { "w_3_omega", fr_size, false, 4 },
+                                                { "z_omega", fr_size, false, 5 },
+                                                { "sigma_1", fr_size, false, 6 },
+                                                { "sigma_2", fr_size, false, 7 },
+                                                { "r", fr_size, false, 8 },
+                                                { "t", fr_size, true, -1 } },
                                               "nu",
                                               10,
                                               true),
@@ -101,14 +105,14 @@ transcript::Manifest create_manifest(const size_t num_public_inputs = 0)
 
 waffle::Prover generate_test_data(const size_t n)
 {
-    // state.widgets.emplace_back(std::make_unique<waffle::ProverArithmeticWidget>(n));
+    // state.random_widgets.emplace_back(std::make_unique<waffle::ProverArithmeticWidget>(n));
 
     // create some constraints that satisfy our arithmetic circuit relation
     fr T0;
 
     // even indices = mul gates, odd incides = add gates
 
-    auto reference_string = std::make_shared<waffle::FileReferenceString>(n, "../srs_db");
+    auto reference_string = std::make_shared<waffle::FileReferenceString>(n + 1, "../srs_db");
     std::shared_ptr<proving_key> key = std::make_shared<proving_key>(n, 0, reference_string);
     std::shared_ptr<program_witness> witness = std::make_shared<program_witness>();
 
@@ -272,15 +276,19 @@ waffle::Prover generate_test_data(const size_t n)
     key->constraint_selector_ffts.insert({ "q_3_fft", std::move(q_3_fft) });
     key->constraint_selector_ffts.insert({ "q_m_fft", std::move(q_m_fft) });
     key->constraint_selector_ffts.insert({ "q_c_fft", std::move(q_c_fft) });
-    std::unique_ptr<waffle::ProverPermutationWidget<3>> permutation_widget =
-        std::make_unique<waffle::ProverPermutationWidget<3>>(key.get(), witness.get());
+    std::unique_ptr<waffle::ProverPermutationWidget<3, false>> permutation_widget =
+        std::make_unique<waffle::ProverPermutationWidget<3, false>>(key.get(), witness.get());
 
-    std::unique_ptr<waffle::ProverArithmeticWidget> widget =
-        std::make_unique<waffle::ProverArithmeticWidget>(key.get(), witness.get());
+    std::unique_ptr<waffle::ProverArithmeticWidget<waffle::standard_settings>> widget =
+        std::make_unique<waffle::ProverArithmeticWidget<waffle::standard_settings>>(key.get(), witness.get());
+
+    std::unique_ptr<KateCommitmentScheme<standard_settings>> kate_commitment_scheme =
+        std::make_unique<KateCommitmentScheme<standard_settings>>();
 
     waffle::Prover state = waffle::Prover(key, witness, create_manifest());
-    state.widgets.emplace_back(std::move(permutation_widget));
-    state.widgets.emplace_back(std::move(widget));
+    state.random_widgets.emplace_back(std::move(permutation_widget));
+    state.transition_widgets.emplace_back(std::move(widget));
+    state.commitment_scheme = std::move(kate_commitment_scheme);
     return state;
 }
 } // namespace prover_helpers
@@ -288,9 +296,7 @@ waffle::Prover generate_test_data(const size_t n)
 TEST(prover, compute_quotient_polynomial)
 {
     size_t n = 1 << 10;
-
     waffle::Prover state = prover_helpers::generate_test_data(n);
-
     state.execute_preamble_round();
     state.queue.process_queue();
     state.execute_first_round();

@@ -1,79 +1,73 @@
 #pragma once
 #include "hash_path.hpp"
-#include <stdlib/hash/pedersen/pedersen.hpp>
-#include <stdlib/primitives/byte_array/byte_array.hpp>
 #include <stdlib/primitives/field/field.hpp>
 
 namespace plonk {
 namespace stdlib {
 namespace merkle_tree {
 
-template <typename Composer>
-bool_t<Composer> check_membership(Composer& composer,
-                                  field_t<Composer> const& root,
-                                  hash_path<Composer> const& hashes,
-                                  byte_array<Composer> const& value,
-                                  byte_array<Composer> const& index)
-{
-    field_t<Composer> current = hash_value(value);
-    bool_t is_member = witness_t(&composer, true);
+using namespace barretenberg;
 
-    for (size_t i = 0; i < hashes.size(); ++i) {
-        bool_t path_bit = index.get_bit(i);
+class LevelDbStore;
+class MemoryStore;
 
-        bool_t is_left = (current == hashes[i].first) & !path_bit;
-        bool_t is_right = (current == hashes[i].second) & path_bit;
-        is_member &= is_left ^ is_right;
-        // if (!is_member.get_value()) {
-        //     std::cout << "failed at height " << i << std::endl;
-        //     std::cout << "is_left " << is_left.get_value() << std::endl;
-        //     std::cout << "is_right " << is_right.get_value() << std::endl;
-        // }
-        current = pedersen::compress(hashes[i].first, hashes[i].second);
+template <typename Store> class MerkleTree {
+  public:
+    typedef uint256_t index_t;
+    typedef std::vector<uint8_t> value_t;
+
+    MerkleTree(Store& store, size_t depth, uint8_t tree_id = 0);
+    MerkleTree(MerkleTree const& other) = delete;
+    MerkleTree(MerkleTree&& other);
+    ~MerkleTree();
+
+    fr_hash_path get_hash_path(index_t index);
+
+    template <size_t S> fr update_element(index_t index, std::array<uint8_t, S> const& value)
+    {
+        return update_element(index, std::vector(value.begin(), value.end()));
     }
 
-    // std::cout << "current " << current << " root " << root << std::endl;
+    fr update_element(index_t index, value_t const& value);
 
-    is_member &= current == root;
-    return is_member;
-}
+    value_t get_element(index_t index);
 
-template <typename Composer>
-void assert_check_membership(Composer& composer,
-                             field_t<Composer> const& root,
-                             hash_path<Composer> const& hashes,
-                             byte_array<Composer> const& value,
-                             byte_array<Composer> const& index)
-{
-    auto exists = stdlib::merkle_tree::check_membership(composer, root, hashes, value, index);
-    // std::cout << "assert check membership " << exists << std::endl;
-    composer.assert_equal_constant(exists.witness_index, fr::one());
-}
+    fr root() const;
 
-template <typename Composer>
-void update_membership(Composer& composer,
-                       field_t<Composer> const& new_root,
-                       hash_path<Composer> const& new_hashes,
-                       byte_array<Composer> const& new_value,
-                       field_t<Composer> const& old_root,
-                       hash_path<Composer> const& old_hashes,
-                       byte_array<Composer> const& old_value,
-                       byte_array<Composer> const& index)
-{
-    // Check old path hashes lead to the old root. They're used when validating the new path hashes.
-    assert_check_membership(composer, old_root, old_hashes, old_value, index);
+    size_t depth() const { return depth_; }
 
-    // Check the new path hashes lead from the new value to the new root.
-    assert_check_membership(composer, new_root, new_hashes, new_value, index);
+    index_t size() const;
 
-    // Check that only the appropriate left or right hash was updated in the new hash path.
-    for (size_t i = 0; i < new_hashes.size(); ++i) {
-        bool_t path_bit = index.get_bit(i);
-        bool_t share_left = (old_hashes[i].first == new_hashes[i].first) & path_bit;
-        bool_t share_right = (old_hashes[i].second == new_hashes[i].second) & !path_bit;
-        composer.assert_equal_constant((share_left ^ share_right).witness_index, barretenberg::fr::one());
-    }
-}
+  private:
+    void load_metadata();
+
+    fr update_element(fr const& root, fr const& value, index_t index, size_t height);
+
+    fr get_element(fr const& root, index_t index, size_t height);
+
+    fr compute_zero_path_hash(size_t height, index_t index, fr const& value);
+
+    fr binary_put(index_t a_index, fr const& a, fr const& b, size_t height);
+
+    fr fork_stump(
+        fr const& value1, index_t index1, fr const& value2, index_t index2, size_t height, size_t stump_height);
+
+    void put(fr const& key, fr const& left, fr const& right);
+
+    void put_stump(fr const& key, index_t index, fr const& value);
+
+  private:
+    static constexpr size_t LEAF_BYTES = 64;
+    Store& store_;
+    std::vector<fr> zero_hashes_;
+    size_t depth_;
+    uint8_t tree_id_;
+};
+
+extern template class MerkleTree<LevelDbStore>;
+extern template class MerkleTree<MemoryStore>;
+
+typedef MerkleTree<LevelDbStore> LevelDbTree;
 
 } // namespace merkle_tree
 } // namespace stdlib

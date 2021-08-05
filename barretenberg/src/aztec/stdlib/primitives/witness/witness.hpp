@@ -1,20 +1,11 @@
 #pragma once
+#include <plonk/composer/composer_base.hpp>
 #include <ecc/curves/bn254/fr.hpp>
 
 namespace plonk {
 namespace stdlib {
 
-/*
-inline barretenberg::fr set_bit(const barretenberg::fr& scalar, const uint64_t bit_position)
-{
-    barretenberg::fr result = scalar;
-    uint64_t limb_idx = bit_position / 64ULL;
-    uint64_t limb_bit_position = bit_position - (limb_idx * 64ULL);
-    result.data[limb_idx] = result.data[limb_idx] + (1ULL << limb_bit_position);
-    return result;
-}
-*/
-
+static constexpr uint32_t IS_CONSTANT = waffle::ComposerBase::IS_CONSTANT;
 template <typename ComposerContext> class witness_t {
   public:
     witness_t() = default;
@@ -37,7 +28,8 @@ template <typename ComposerContext> class witness_t {
         witness_index = context->add_variable(witness);
     }
 
-    template <typename T> witness_t(ComposerContext* parent_context, T const in)
+    template <typename T, typename = std::enable_if_t<std::is_integral_v<T>>>
+    witness_t(ComposerContext* parent_context, T const in)
     {
         context = parent_context;
         witness = barretenberg::fr{ static_cast<uint64_t>(in), 0, 0, 0 }.to_montgomery_form();
@@ -49,11 +41,11 @@ template <typename ComposerContext> class witness_t {
 };
 
 template <typename ComposerContext> class public_witness_t : public witness_t<ComposerContext> {
+  public:
     using witness_t<ComposerContext>::context;
     using witness_t<ComposerContext>::witness;
     using witness_t<ComposerContext>::witness_index;
 
-  public:
     public_witness_t() = default;
     public_witness_t(ComposerContext* parent_context, const barretenberg::fr& in)
     {

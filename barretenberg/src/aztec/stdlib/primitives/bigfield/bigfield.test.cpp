@@ -13,7 +13,6 @@
 #include <plonk/composer/turbo_composer.hpp>
 #include <plonk/proof_system/prover/prover.hpp>
 #include <plonk/proof_system/verifier/verifier.hpp>
-#include <plonk/proof_system/widgets/arithmetic_widget.hpp>
 
 #include <memory>
 #include <polynomials/polynomial_arithmetic.hpp>
@@ -52,10 +51,10 @@ TEST(stdlib_bigfield, test_mul)
         if (i == num_repetitions - 1) {
             std::cout << "num gates per mul = " << after - before << std::endl;
         }
-        // uint256_t modulus{ barretenberg::Bn254FqParams::modulus_0,
-        //                    barretenberg::Bn254FqParams::modulus_1,
-        //                    barretenberg::Bn254FqParams::modulus_2,
-        //                    barretenberg::Bn254FqParams::modulus_3 };
+        // // uint256_t modulus{ barretenberg::Bn254FqParams::modulus_0,
+        // //                    barretenberg::Bn254FqParams::modulus_1,
+        // //                    barretenberg::Bn254FqParams::modulus_2,
+        // //                    barretenberg::Bn254FqParams::modulus_3 };
 
         fq expected = (inputs[0] * inputs[1]);
         expected = expected.from_montgomery_form();

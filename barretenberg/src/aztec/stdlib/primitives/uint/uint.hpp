@@ -23,6 +23,15 @@ template <typename Composer, typename Native> class uint {
         : uint(static_cast<uint256_t>(v))
     {}
 
+    std::vector<uint32_t> constrain_accumulators(Composer* ctx,
+                                                 const uint32_t witness_index,
+                                                 const size_t num_bits = width) const;
+
+    static constexpr size_t num_accumulators()
+    {
+        return (width + Composer::UINT_LOG2_BASE - 1) / Composer::UINT_LOG2_BASE;
+    }
+
     // uint(const char v)
     //     : uint(uint256_t((uint8_t)v))
     // {}
@@ -123,7 +132,7 @@ template <typename Composer, typename Native> class uint {
 
     uint256_t get_value() const;
 
-    bool is_constant() const { return witness_index == UINT32_MAX; }
+    bool is_constant() const { return witness_index == IS_CONSTANT; }
     Composer* get_context() const { return context; }
 
     bool_t<Composer> at(const size_t bit_index) const;

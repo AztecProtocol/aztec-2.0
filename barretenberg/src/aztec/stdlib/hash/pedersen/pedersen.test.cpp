@@ -2,8 +2,8 @@
 #include <crypto/pedersen/pedersen.hpp>
 #include <ecc/curves/grumpkin/grumpkin.hpp>
 #include <numeric/random/engine.hpp>
-
-#include <gtest/gtest.h>
+#include <common/test.hpp>
+#include <plonk/composer/turbo_composer.hpp>
 
 namespace test_stdlib_pedersen {
 using namespace barretenberg;
@@ -13,6 +13,7 @@ typedef stdlib::byte_array<waffle::TurboComposer> byte_array;
 typedef stdlib::field_t<waffle::TurboComposer> field_t;
 typedef stdlib::witness_t<waffle::TurboComposer> witness_t;
 typedef stdlib::public_witness_t<waffle::TurboComposer> public_witness_t;
+typedef stdlib::pedersen<waffle::TurboComposer> pedersen;
 
 namespace {
 auto& engine = numeric::random::get_debug_engine();
@@ -39,7 +40,7 @@ TEST(stdlib_pedersen, test_pedersen)
     composer.fix_witness(left.witness_index, left.get_value());
     composer.fix_witness(right.witness_index, right.get_value());
 
-    field_t out = plonk::stdlib::pedersen::compress(left, right);
+    field_t out = pedersen::compress(left, right);
 
     waffle::TurboProver prover = composer.create_prover();
 
@@ -139,7 +140,7 @@ TEST(stdlib_pedersen, test_pedersen)
     EXPECT_EQ(out.get_value(), compress_native);
 }
 
-TEST(stdlib_pedersen, test_pedersen_large)
+HEAVY_TEST(stdlib_pedersen, test_pedersen_large)
 {
 
     waffle::TurboComposer composer = waffle::TurboComposer();
@@ -157,7 +158,7 @@ TEST(stdlib_pedersen, test_pedersen_large)
     field_t right = witness_t(&composer, right_in);
 
     for (size_t i = 0; i < 256; ++i) {
-        left = plonk::stdlib::pedersen::compress(left, right);
+        left = pedersen::compress(left, right);
     }
 
     composer.set_public_input(left.witness_index);
@@ -173,7 +174,7 @@ TEST(stdlib_pedersen, test_pedersen_large)
     EXPECT_EQ(result, true);
 }
 
-TEST(stdlib_pedersen, test_pedersen_large_unrolled)
+HEAVY_TEST(stdlib_pedersen, test_pedersen_large_unrolled)
 {
 
     waffle::TurboComposer composer = waffle::TurboComposer();
@@ -191,7 +192,7 @@ TEST(stdlib_pedersen, test_pedersen_large_unrolled)
     field_t right = witness_t(&composer, right_in);
 
     for (size_t i = 0; i < 256; ++i) {
-        left = plonk::stdlib::pedersen::compress(left, right);
+        left = pedersen::compress(left, right);
     }
 
     composer.set_public_input(left.witness_index);
@@ -222,7 +223,7 @@ TEST(stdlib_pedersen, test_compress_byte_array)
     std::vector<uint8_t> native_output = crypto::pedersen::compress_native(input);
 
     byte_array circuit_input(&composer, input);
-    byte_array result = plonk::stdlib::pedersen::compress(circuit_input);
+    byte_array result = pedersen::compress(circuit_input);
     byte_array expected(&composer, native_output);
 
     EXPECT_EQ(result.get_value(), expected.get_value());
@@ -279,7 +280,7 @@ TEST(stdlib_pedersen, test_multi_compress)
 
         barretenberg::fr expected = crypto::pedersen::compress_native(inputs);
 
-        field_t result = plonk::stdlib::pedersen::compress(witnesses, true);
+        field_t result = pedersen::compress(witnesses, true);
         EXPECT_EQ(result.get_value(), expected);
     }
 
@@ -293,4 +294,45 @@ TEST(stdlib_pedersen, test_multi_compress)
     bool proof_result = verifier.verify_proof(proof);
     EXPECT_EQ(proof_result, true);
 }
+
+TEST(stdlib_pedersen, test_compress_eight)
+{
+    waffle::TurboComposer composer = waffle::TurboComposer();
+
+    std::array<barretenberg::fr, 8> inputs;
+    std::array<plonk::stdlib::field_t<waffle::TurboComposer>, 8> witness_inputs;
+
+    for (size_t i = 0; i < 8; ++i) {
+        inputs[i] = barretenberg::fr::random_element();
+        witness_inputs[i] = witness_t(&composer, inputs[i]);
+    }
+
+    barretenberg::fr expected = crypto::pedersen::compress_native(inputs);
+    auto result = pedersen::compress(witness_inputs);
+
+    EXPECT_EQ(result.get_value(), expected);
+}
+
+TEST(stdlib_pedersen, test_compress_constants)
+{
+    waffle::TurboComposer composer = waffle::TurboComposer();
+
+    std::vector<barretenberg::fr> inputs;
+    std::vector<plonk::stdlib::field_t<waffle::TurboComposer>> witness_inputs;
+
+    for (size_t i = 0; i < 8; ++i) {
+        inputs.push_back(barretenberg::fr::random_element());
+        if (i % 2 == 1) {
+            witness_inputs.push_back(witness_t(&composer, inputs[i]));
+        } else {
+            witness_inputs.push_back(field_t(&composer, inputs[i]));
+        }
+    }
+
+    barretenberg::fr expected = crypto::pedersen::compress_native(inputs);
+    auto result = pedersen::compress(witness_inputs);
+
+    EXPECT_EQ(result.get_value(), expected);
+}
+
 } // namespace test_stdlib_pedersen

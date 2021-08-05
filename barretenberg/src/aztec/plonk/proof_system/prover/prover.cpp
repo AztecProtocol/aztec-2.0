@@ -20,7 +20,7 @@ ProverBase<settings>::ProverBase(std::shared_ptr<proving_key> input_key,
     , witness(input_witness)
     , queue(key.get(), witness.get(), &transcript)
 {
-    if (witness && witness->wires.count("z") == 0) {
+    if (input_witness && witness->wires.count("z") == 0) {
         witness->wires.insert({ "z", polynomial(n, n) });
     }
 }
@@ -31,10 +31,14 @@ ProverBase<settings>::ProverBase(ProverBase<settings>&& other)
     , transcript(other.transcript)
     , key(std::move(other.key))
     , witness(std::move(other.witness))
+    , commitment_scheme(std::move(other.commitment_scheme))
     , queue(key.get(), witness.get(), &transcript)
 {
-    for (size_t i = 0; i < other.widgets.size(); ++i) {
-        widgets.emplace_back(std::move(other.widgets[i]));
+    for (size_t i = 0; i < other.random_widgets.size(); ++i) {
+        random_widgets.emplace_back(std::move(other.random_widgets[i]));
+    }
+    for (size_t i = 0; i < other.transition_widgets.size(); ++i) {
+        transition_widgets.emplace_back(std::move(other.transition_widgets[i]));
     }
 }
 
@@ -42,14 +46,19 @@ template <typename settings> ProverBase<settings>& ProverBase<settings>::operato
 {
     n = other.n;
 
-    widgets.resize(0);
-    for (size_t i = 0; i < other.widgets.size(); ++i) {
-        widgets.emplace_back(std::move(other.widgets[i]));
+    random_widgets.resize(0);
+    transition_widgets.resize(0);
+    for (size_t i = 0; i < other.random_widgets.size(); ++i) {
+        random_widgets.emplace_back(std::move(other.random_widgets[i]));
     }
-
+    for (size_t i = 0; i < other.transition_widgets.size(); ++i) {
+        transition_widgets.emplace_back(std::move(other.transition_widgets[i]));
+    }
     transcript = other.transcript;
     key = std::move(other.key);
     witness = std::move(other.witness);
+    commitment_scheme = std::move(other.commitment_scheme);
+
     queue = work_queue(key.get(), witness.get(), &transcript);
     return *this;
 }
@@ -58,13 +67,9 @@ template <typename settings> void ProverBase<settings>::compute_wire_pre_commitm
 {
     for (size_t i = 0; i < settings::program_width; ++i) {
         std::string wire_tag = "w_" + std::to_string(i + 1);
-        queue.add_to_queue({
-            work_queue::WorkType::SCALAR_MULTIPLICATION,
-            witness->wires.at(wire_tag).get_coefficients(),
-            "W_" + std::to_string(i + 1),
-            barretenberg::fr(0),
-            0,
-        });
+        std::string commit_tag = "W_" + std::to_string(i + 1);
+        barretenberg::fr* coefficients = witness->wires.at(wire_tag).get_coefficients();
+        commitment_scheme->commit(coefficients, commit_tag, barretenberg::fr(0), queue);
     }
 
     // add public inputs
@@ -73,21 +78,60 @@ template <typename settings> void ProverBase<settings>::compute_wire_pre_commitm
     for (size_t i = 0; i < key->num_public_inputs; ++i) {
         public_wires.push_back(public_wires_source[i]);
     }
-    transcript.add_element("public_inputs", fr::to_buffer(public_wires));
+    transcript.add_element("public_inputs", ::to_buffer(public_wires));
 }
 
 template <typename settings> void ProverBase<settings>::compute_quotient_pre_commitment()
 {
-    for (size_t i = 0; i < settings::program_width; ++i) {
+    // In this method, we compute the commitments to polynomials t_{low}(X), t_{mid}(X) and t_{high}(X).
+    // Recall, the quotient polynomial t(X) = t_{low}(X) + t_{mid}(X).X^n + t_{high}(X).X^{2n}
+    //
+    // The reason we split t(X) into three degree-n polynomials is because:
+    //  (i) We want the opening proof polynomials bounded by degree n as the opening algorithm of the
+    //      polynomial commitment scheme results in O(n) prover computation.
+    // (ii) The size of the srs restricts us to compute commitments to polynomials of degree n
+    //      (and disallows for degree 2n and 3n for large n).
+    //
+    // The degree of t(X) is determined by the term:
+    // ((a(X) + βX + γ) (b(X) + βk_1X + γ) (c(X) + βk_2X + γ)z(X)) / Z*_H(X).
+    //
+    // Let k = num_roots_cut_out_of_vanishing_polynomial, we have
+    // deg(t) = (n - 1) * (program_width + 1) - (n - k)
+    //        = n * program_width - program_width - 1 + k
+    //
+    // Since we must cut atleast 4 roots from the vanishing polynomial
+    // (refer to ./src/aztec/plonk/proof_system/widgets/random_widgets/permutation_widget_impl.hpp/L247),
+    // k = 4 => deg(t) = n * program_width - program_width + 3
+    //
+    // For standard plonk, program_width = 3 and thus, deg(t) = 3n. This implies that there would be
+    // (3n + 1) coefficients of t(X). Now, splitting them into t_{low}(X), t_{mid}(X) and t_{high}(X),
+    // t_{high} will have (n+1) coefficients while t_{low} and t_{mid} will have n coefficients.
+    // This means that to commit t_{high}, we need a multi-scalar multiplication of size (n+1).
+    // Thus, we first compute the commitments to t_{low}(X), t_{mid}(X) using n multi-scalar multiplications
+    // each and separately compute commitment to t_{high} which is of size (n + 1).
+    // Note that this must be done only when program_width = 3.
+    //
+    //
+    // NOTE: If in future there is a need to cut off more zeros off the vanishing polynomial, the degree of
+    // the quotient polynomial t(X) will increase, so the degrees of t_{high}, t_{mid}, t_{low} could also
+    // increase according to the type of the composer type we are using. Currently, for TurboPLONK and Ultra-
+    // PLONK, the degree of t(X) is (4n - 1) and hence each t_{low}, t_{mid}, t_{high}, t_{higher} each is of
+    // degree (n - 1) (and thus contains n coefficients). Therefore, we are on the brink!
+    // If we need to cut out more zeros off the vanishing polynomial, sizes of coefficients of individual
+    // t_{i} would change and so we will have to ensure the correct size of multi-scalar multiplication in
+    // computing the commitments to these polynomials.
+    //
+    for (size_t i = 0; i < settings::program_width - 1; ++i) {
         const size_t offset = n * i;
-        queue.add_to_queue({
-            work_queue::WorkType::SCALAR_MULTIPLICATION,
-            &key->quotient_large.get_coefficients()[offset],
-            "T_" + std::to_string(i + 1),
-            barretenberg::fr(0),
-            0,
-        });
+        fr* coefficients = &key->quotient_large.get_coefficients()[offset];
+        std::string quotient_tag = "T_" + std::to_string(i + 1);
+        commitment_scheme->commit(coefficients, quotient_tag, barretenberg::fr(0), queue);
     }
+
+    fr* coefficients = &key->quotient_large.get_coefficients()[(settings::program_width - 1) * n];
+    std::string quotient_tag = "T_" + std::to_string(settings::program_width);
+    fr program_flag = settings::program_width == 3 ? barretenberg::fr(1) : barretenberg::fr(0);
+    commitment_scheme->commit(coefficients, quotient_tag, program_flag, queue);
 }
 
 template <typename settings> void ProverBase<settings>::execute_preamble_round()
@@ -106,8 +150,38 @@ template <typename settings> void ProverBase<settings>::execute_preamble_round()
     transcript.apply_fiat_shamir("init");
 
     for (size_t i = 0; i < settings::program_width; ++i) {
+        // fetch witness wire w_i
         std::string wire_tag = "w_" + std::to_string(i + 1);
         barretenberg::polynomial& wire = witness->wires.at(wire_tag);
+
+        /*
+        Adding zero knowledge to the witness polynomials.
+        */
+        // To ensure that PLONK is honest-verifier zero-knowledge, we need to ensure that the witness polynomials
+        // and the permutation polynomial look uniformly random to an adversary. To make the witness polynomials
+        // a(X), b(X) and c(X) uniformly random, we need to add 2 random blinding factors into each of them.
+        // i.e. a'(X) = a(X) + (r_1X + r_2)
+        // where r_1 and r_2 are uniformly random scalar field elements. A natural question is:
+        // Why do we need 2 random scalars in witness polynomials? The reason is: our witness polynomials are
+        // evaluated at only 1 point (\scripted{z}), so adding a random degree-1 polynomial suffices.
+        //
+        // NOTE: In TurboPlonk and UltraPlonk, the witness polynomials are evaluated at 2 points and thus
+        // we need to add 3 random scalars in them.
+        //
+        // We start adding random scalars in `wire` polynomials from index (n - k) upto (n - k + 2).
+        // For simplicity, we add 3 random scalars even for standard plonk (recall, just 2 of them are required)
+        // since an additional random scalar would not affect things.
+        //
+        // NOTE: If in future there is a need to cut off more zeros off the vanishing polynomial, this method
+        // will not change. This must be changed only if the number of evaluations of witness polynomials
+        // change.
+        //
+        const size_t w_randomness = 3;
+        ASSERT(w_randomness < settings::num_roots_cut_out_of_vanishing_polynomial);
+        for (size_t k = 0; k < w_randomness; ++k) {
+            wire.at(n - settings::num_roots_cut_out_of_vanishing_polynomial + k) = fr::random_element();
+        }
+
         barretenberg::polynomial& wire_fft = key->wire_ffts.at(wire_tag + "_fft");
         barretenberg::polynomial_arithmetic::copy_polynomial(&wire[0], &wire_fft[0], n, n);
         queue.add_to_queue({
@@ -143,7 +217,7 @@ template <typename settings> void ProverBase<settings>::execute_first_round()
     start = std::chrono::steady_clock::now();
 #endif
     compute_wire_pre_commitments();
-    for (auto& widget : widgets) {
+    for (auto& widget : random_widgets) {
         widget->compute_round_commitments(transcript, 1, queue);
     }
 #ifdef DEBUG_TIMING
@@ -154,6 +228,15 @@ template <typename settings> void ProverBase<settings>::execute_first_round()
 }
 
 template <typename settings> void ProverBase<settings>::execute_second_round()
+{
+    queue.flush_queue();
+    transcript.apply_fiat_shamir("eta");
+    for (auto& widget : random_widgets) {
+        widget->compute_round_commitments(transcript, 2, queue);
+    }
+}
+
+template <typename settings> void ProverBase<settings>::execute_third_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("beta");
@@ -168,8 +251,8 @@ template <typename settings> void ProverBase<settings>::execute_second_round()
 #ifdef DEBUG_TIMING
     start = std::chrono::steady_clock::now();
 #endif
-    for (auto& widget : widgets) {
-        widget->compute_round_commitments(transcript, 2, queue);
+    for (auto& widget : random_widgets) {
+        widget->compute_round_commitments(transcript, 3, queue);
     }
 
     for (size_t i = 0; i < settings::program_width; ++i) {
@@ -189,7 +272,7 @@ template <typename settings> void ProverBase<settings>::execute_second_round()
 #endif
 }
 
-template <typename settings> void ProverBase<settings>::execute_third_round()
+template <typename settings> void ProverBase<settings>::execute_fourth_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("alpha");
@@ -219,20 +302,21 @@ template <typename settings> void ProverBase<settings>::execute_third_round()
     std::cout << "compute permutation grand product coeffs: " << diff.count() << "ms" << std::endl;
 #endif
     fr alpha_base = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
-    // fr alpha_base = alpha.sqr().sqr();
 
-    for (size_t i = 0; i < widgets.size(); ++i) {
+    for (auto& widget : random_widgets) {
 #ifdef DEBUG_TIMING
         std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 #endif
-        alpha_base = widgets[i]->compute_quotient_contribution(alpha_base, transcript);
+        alpha_base = widget->compute_quotient_contribution(alpha_base, transcript);
 #ifdef DEBUG_TIMING
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
         std::cout << "widget " << i << " quotient compute time: " << diff.count() << "ms" << std::endl;
 #endif
     }
-
+    for (auto& widget : transition_widgets) {
+        alpha_base = widget->compute_quotient_contribution(alpha_base, transcript);
+    }
     fr* q_mid = &key->quotient_mid[0];
     fr* q_large = &key->quotient_large[0];
 
@@ -276,12 +360,12 @@ template <typename settings> void ProverBase<settings>::execute_third_round()
     diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     std::cout << "compute quotient commitment: " << diff.count() << "ms" << std::endl;
 #endif
-}
+} // namespace waffle
 
-template <typename settings> void ProverBase<settings>::execute_fourth_round()
+template <typename settings> void ProverBase<settings>::execute_fifth_round()
 {
     queue.flush_queue();
-    transcript.apply_fiat_shamir("z"); // end of 3rd round
+    transcript.apply_fiat_shamir("z"); // end of 4th round
 #ifdef DEBUG_TIMING
     std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
 #endif
@@ -293,198 +377,34 @@ template <typename settings> void ProverBase<settings>::execute_fourth_round()
 #endif
 }
 
-template <typename settings> void ProverBase<settings>::execute_fifth_round()
+template <typename settings> void ProverBase<settings>::execute_sixth_round()
 {
     queue.flush_queue();
     transcript.apply_fiat_shamir("nu");
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
-#endif
-    std::vector<fr> nu_challenges;
-    std::vector<fr> shifted_nu_challenges;
 
-    if constexpr (settings::use_linearisation) {
-        nu_challenges.emplace_back(fr::serialize_from_buffer(transcript.get_challenge_from_map("nu", "r").begin()));
-    }
-    for (size_t i = 0; i < settings::program_width; ++i) {
-        if (settings::requires_shifted_wire(settings::wire_shift_settings, i)) {
-            shifted_nu_challenges.emplace_back(fr::serialize_from_buffer(
-                transcript.get_challenge_from_map("nu", "w_" + std::to_string(i + 1)).begin()));
-        }
-        nu_challenges.emplace_back(
-            fr::serialize_from_buffer(transcript.get_challenge_from_map("nu", "w_" + std::to_string(i + 1)).begin()));
-    }
-
-    fr z_challenge = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
-    fr* r = key->linear_poly.get_coefficients();
-
-    std::array<fr*, settings::program_width> wires;
-    for (size_t i = 0; i < settings::program_width; ++i) {
-        wires[i] = &witness->wires.at("w_" + std::to_string(i + 1))[0];
-    }
-
-    // Next step: compute the two Kate polynomial commitments, and associated opening proofs
-    // We have two evaluation points: z and z.omega
-    // We need to create random linear combinations of each individual polynomial and combine them
-
-    polynomial& opening_poly = key->opening_poly;
-    polynomial& shifted_opening_poly = key->shifted_opening_poly;
-
-    std::array<fr, settings::program_width> z_powers;
-    z_powers[0] = z_challenge;
-    for (size_t i = 1; i < settings::program_width; ++i) {
-        z_powers[i] = z_challenge.pow(static_cast<uint64_t>(n * i));
-    }
-
-    polynomial& quotient_large = key->quotient_large;
-
-    ITERATE_OVER_DOMAIN_START(key->small_domain);
-
-    fr T0;
-    fr quotient_temp = fr::zero();
-    if constexpr (settings::use_linearisation) {
-        quotient_temp = r[i] * nu_challenges[0];
-    }
-    for (size_t k = 1; k < settings::program_width; ++k) {
-        T0 = quotient_large[i + (k * n)] * z_powers[k];
-        quotient_temp += T0;
-    }
-    for (size_t k = 0; k < settings::program_width; ++k) {
-        T0 = wires[k][i] * nu_challenges[k + settings::use_linearisation];
-        quotient_temp += T0;
-    }
-    shifted_opening_poly[i] = 0;
-
-    opening_poly[i] = quotient_large[i] + quotient_temp;
-
-    ITERATE_OVER_DOMAIN_END;
-
-    if constexpr (settings::wire_shift_settings > 0) {
-        ITERATE_OVER_DOMAIN_START(key->small_domain);
-        size_t nu_ptr = 0;
-        if constexpr (settings::requires_shifted_wire(settings::wire_shift_settings, 0)) {
-            fr T0;
-            T0 = shifted_nu_challenges[nu_ptr++] * wires[0][i];
-            shifted_opening_poly[i] += T0;
-        }
-        if constexpr (settings::requires_shifted_wire(settings::wire_shift_settings, 1)) {
-            fr T0;
-            T0 = shifted_nu_challenges[nu_ptr++] * wires[1][i];
-            shifted_opening_poly[i] += T0;
-        }
-        if constexpr (settings::requires_shifted_wire(settings::wire_shift_settings, 2)) {
-            fr T0;
-            T0 = shifted_nu_challenges[nu_ptr++] * wires[2][i];
-            shifted_opening_poly[i] += T0;
-        }
-        if constexpr (settings::requires_shifted_wire(settings::wire_shift_settings, 3)) {
-            fr T0;
-            T0 = shifted_nu_challenges[nu_ptr++] * wires[3][i];
-            shifted_opening_poly[i] += T0;
-        }
-        for (size_t k = 4; k < settings::program_width; ++k) {
-            if (settings::requires_shifted_wire(settings::wire_shift_settings, k)) {
-                fr T0;
-                T0 = shifted_nu_challenges[nu_ptr++] * wires[k][i];
-                shifted_opening_poly[i] += T0;
-            }
-        }
-        ITERATE_OVER_DOMAIN_END;
-    }
-
-#ifdef DEBUG_TIMING
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    std::chrono::milliseconds diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute base opening poly contribution: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-    // Currently code assumes permutation_widget is first.
-    for (size_t i = 0; i < widgets.size(); ++i) {
-        widgets[i]->compute_opening_poly_contribution(transcript, settings::use_linearisation);
-    }
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute widget opening poly contributions: " << diff.count() << "ms" << std::endl;
-#endif
-    fr shifted_z;
-    shifted_z = z_challenge * key->small_domain.root;
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-    opening_poly.compute_kate_opening_coefficients(z_challenge);
-
-    shifted_opening_poly.compute_kate_opening_coefficients(shifted_z);
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute kate opening poly coefficients: " << diff.count() << "ms" << std::endl;
-#endif
-#ifdef DEBUG_TIMING
-    start = std::chrono::steady_clock::now();
-#endif
-
-    queue.add_to_queue({
-        work_queue::WorkType::SCALAR_MULTIPLICATION,
-        opening_poly.get_coefficients(),
-        "PI_Z",
-        barretenberg::fr(0),
-        0,
-    });
-    queue.add_to_queue({
-        work_queue::WorkType::SCALAR_MULTIPLICATION,
-        shifted_opening_poly.get_coefficients(),
-        "PI_Z_OMEGA",
-        barretenberg::fr(0),
-        0,
-    });
-#ifdef DEBUG_TIMING
-    end = std::chrono::steady_clock::now();
-    diff = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::cout << "compute opening commitment: " << diff.count() << "ms" << std::endl;
-#endif
+    commitment_scheme->batch_open(transcript, queue, key, witness);
 }
 
 template <typename settings> barretenberg::fr ProverBase<settings>::compute_linearisation_coefficients()
 {
 
-    fr z_challenge = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
-    fr shifted_z = z_challenge * key->small_domain.root;
+    fr zeta = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
 
     polynomial& r = key->linear_poly;
-    // ok... now we need to evaluate polynomials. Jeepers
 
-    // evaluate the prover and instance polynomials.
-    // (we don't need to evaluate the quotient polynomial, that can be derived by the verifier)
-    for (size_t i = 0; i < settings::program_width; ++i) {
-        std::string wire_key = "w_" + std::to_string(i + 1);
-        const polynomial& wire = witness->wires.at(wire_key);
-        fr wire_eval;
-        wire_eval = wire.evaluate(z_challenge, n);
-        transcript.add_element(wire_key, wire_eval.to_buffer());
-
-        if (settings::requires_shifted_wire(settings::wire_shift_settings, i)) {
-            fr shifted_wire_eval;
-            shifted_wire_eval = wire.evaluate(shifted_z, n);
-            transcript.add_element(wire_key + "_omega", shifted_wire_eval.to_buffer());
-        }
-    }
-
-    for (size_t i = 0; i < widgets.size(); ++i) {
-        widgets[i]->compute_transcript_elements(transcript, settings::use_linearisation);
-    }
-
-    fr t_eval = key->quotient_large.evaluate(z_challenge, 4 * n);
+    commitment_scheme->add_opening_evaluations_to_transcript(transcript, key, witness, false);
+    fr t_eval = key->quotient_large.evaluate(zeta, 4 * n);
 
     if constexpr (settings::use_linearisation) {
         fr alpha_base = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
-        for (size_t i = 0; i < widgets.size(); ++i) {
-            alpha_base = widgets[i]->compute_linear_contribution(alpha_base, transcript, r);
-        }
 
-        fr linear_eval = r.evaluate(z_challenge, n);
+        for (auto& widget : random_widgets) {
+            alpha_base = widget->compute_linear_contribution(alpha_base, transcript, r);
+        }
+        for (auto& widget : transition_widgets) {
+            alpha_base = widget->compute_linear_contribution(alpha_base, transcript, &r[0]);
+        }
+        fr linear_eval = r.evaluate(zeta, n);
         transcript.add_element("r", linear_eval.to_buffer());
     }
     transcript.add_element("t", t_eval.to_buffer());
@@ -508,7 +428,9 @@ template <typename settings> waffle::plonk_proof& ProverBase<settings>::construc
     execute_third_round();
     queue.process_queue();
     execute_fourth_round();
+    queue.process_queue();
     execute_fifth_round();
+    execute_sixth_round();
     queue.process_queue();
     return export_proof();
 }

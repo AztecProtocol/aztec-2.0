@@ -1,7 +1,4 @@
-if(NOT WASM)
-    add_compile_options(-march=native)
-endif()
-add_compile_options(-Werror -Wall -Wextra -Wconversion -Wsign-conversion -Wno-deprecated)
+add_compile_options(-Werror -Wall -Wextra -Wconversion -Wsign-conversion -Wno-deprecated -Wfatal-errors)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wno-unguarded-availability-new -Wno-c99-extensions -fconstexpr-steps=100000000)
@@ -51,6 +48,8 @@ if(WASM)
         barretenberg.wasm
         $<TARGET_OBJECTS:srs_objects>
         $<TARGET_OBJECTS:numeric_objects>
+        $<TARGET_OBJECTS:sha256_objects>
+        $<TARGET_OBJECTS:aes128_objects>
         $<TARGET_OBJECTS:blake2s_objects>
         $<TARGET_OBJECTS:keccak_objects>
         $<TARGET_OBJECTS:schnorr_objects>
@@ -65,9 +64,7 @@ if(WASM)
         $<TARGET_OBJECTS:stdlib_schnorr_objects>
         $<TARGET_OBJECTS:stdlib_pedersen_objects>
         $<TARGET_OBJECTS:stdlib_blake2s_objects>
-        $<TARGET_OBJECTS:rollup_tx_objects>
-        $<TARGET_OBJECTS:rollup_pedersen_note_objects>
-        $<TARGET_OBJECTS:rollup_client_proofs_objects>
+        $<TARGET_OBJECTS:rollup_proofs_objects>
     )
 
     target_link_options(
@@ -75,4 +72,5 @@ if(WASM)
         PRIVATE
         -nostartfiles -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--allow-undefined -Wl,--stack-first -Wl,-z,stack-size=8388608
     )
+
 endif()

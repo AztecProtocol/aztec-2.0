@@ -1,17 +1,19 @@
 #pragma once
 
-#include <plonk/transcript/transcript.hpp>
-#include <ecc/curves/bn254/fr.hpp>
 #include <ecc/curves/bn254/fq.hpp>
+#include <ecc/curves/bn254/fr.hpp>
 #include <ecc/curves/bn254/g1.hpp>
+#include <plonk/transcript/transcript.hpp>
 
-#include "../../primitives/witness/witness.hpp"
-#include "../../primitives/field/field.hpp"
-#include "../../primitives/bool/bool.hpp"
-#include "../../primitives/bigfield/bigfield.hpp"
-#include "../../primitives/biggroup/biggroup.hpp"
+#include "../../primitives/curves/bn254.hpp"
+#include "../verification_key/verification_key.hpp"
 #include "../../hash/blake2s/blake2s.hpp"
 #include "../../hash/pedersen/pedersen.hpp"
+#include "../../primitives/bigfield/bigfield.hpp"
+#include "../../primitives/biggroup/biggroup.hpp"
+#include "../../primitives/bool/bool.hpp"
+#include "../../primitives/field/field.hpp"
+#include "../../primitives/witness/witness.hpp"
 
 namespace plonk {
 namespace stdlib {
@@ -22,6 +24,8 @@ template <typename Composer> class Transcript {
     using witness_pt = witness_t<Composer>;
     using fq_pt = bigfield<Composer, barretenberg::Bn254FqParams>;
     using group_pt = element<Composer, fq_pt, field_pt, barretenberg::g1>;
+    using pedersen = plonk::stdlib::pedersen<Composer>;
+    using Key = plonk::stdlib::recursion::verification_key<stdlib::bn254<Composer>>;
 
     Transcript(Composer* in_context, const transcript::Manifest input_manifest)
         : context(in_context)
@@ -116,14 +120,24 @@ template <typename Composer> class Transcript {
         for (size_t i = 0; i < elements.size(); ++i) {
             values.push_back(elements[i].get_value());
         }
-        transcript_base.add_element(element_name, barretenberg::fr::to_buffer(values));
+        transcript_base.add_element(element_name, to_buffer(values));
         field_vector_keys.push_back(element_name);
         field_vector_values.push_back(elements);
     }
 
     void apply_fiat_shamir(const std::string& challenge_name)
     {
+        const size_t num_challenges = get_manifest().get_round_manifest(current_round).num_challenges;
+        transcript_base.apply_fiat_shamir(challenge_name);
+
+        if (num_challenges == 0) {
+            ++current_round;
+            return;
+        }
         const size_t bytes_per_element = 31;
+
+        // split work_element into 2 limbs and insert into element_buffer
+        // each entry in element_buffer is 31 bytes
         const auto split = [&](field_pt& work_element,
                                std::vector<field_pt>& element_buffer,
                                const field_pt& element,
@@ -149,7 +163,6 @@ template <typename Composer> class Transcript {
                 return;
             }
             const size_t lo_bytes = num_bytes - hi_bytes;
-
             field_pt lo = witness_t(context, barretenberg::fr(element_u256.slice(0, lo_bytes * 8)));
             field_pt hi = witness_t(context, barretenberg::fr(element_u256.slice(lo_bytes * 8, 256)));
             context->create_range_constraint(lo.witness_index, lo_bytes * 8);
@@ -158,19 +171,29 @@ template <typename Composer> class Transcript {
             field_pt sum = lo + (hi * shift);
             sum = sum.normalize();
 
-            context->assert_equal(sum.witness_index, element.witness_index);
+            if (element.witness_index != IS_CONSTANT) {
+                context->assert_equal(sum.witness_index, element.witness_index);
+            } else if (sum.witness_index != IS_CONSTANT) {
+                context->assert_equal_constant(sum.witness_index, element.get_value());
+            }
             current_byte_counter = (current_byte_counter + num_bytes) % bytes_per_element;
-            work_element = work_element + hi;
 
-            element_buffer.push_back(work_element);
+            // if current_byte_counter == 0 we've rolled over
+            if (current_byte_counter == 0) {
+                element_buffer.push_back(work_element + hi);
+                element_buffer.push_back(lo);
+                work_element = field_pt(context, 0);
+            } else {
+                work_element = work_element + hi;
 
-            field_t lo_shift(context,
-                             barretenberg::fr(uint256_t(1ULL) << ((31ULL - (uint64_t)current_byte_counter) * 8ULL)));
-            work_element = (lo * lo_shift);
-            work_element = work_element.normalize();
+                element_buffer.push_back(work_element);
+
+                field_t lo_shift(
+                    context, barretenberg::fr(uint256_t(1ULL) << ((31ULL - (uint64_t)current_byte_counter) * 8ULL)));
+                work_element = (lo * lo_shift);
+                work_element = work_element.normalize();
+            }
         };
-
-        transcript_base.apply_fiat_shamir(challenge_name);
 
         std::vector<field_pt> compression_buffer;
         field_pt working_element(context);
@@ -233,8 +256,6 @@ template <typename Composer> class Transcript {
 
         byte_array<Composer> base_hash = blake2s(compressed_buffer);
 
-        const size_t num_challenges = get_manifest().get_round_manifest(current_round).num_challenges;
-
         byte_array<Composer> first(field_pt(0), 16);
         first.write(base_hash.slice(0, 16));
         round_challenges.push_back(first);
@@ -293,7 +314,7 @@ template <typename Composer> class Transcript {
         if (cache_idx != -1) {
             return field_vector_values[static_cast<size_t>(cache_idx)];
         }
-        std::vector<barretenberg::fr> values = barretenberg::fr::from_buffer(transcript_base.get_element(element_name));
+        std::vector<barretenberg::fr> values = many_from_buffer<fr>(transcript_base.get_element(element_name));
         std::vector<field_pt> result;
 
         for (size_t i = 0; i < values.size(); ++i) {
@@ -303,6 +324,11 @@ template <typename Composer> class Transcript {
         field_vector_keys.push_back(element_name);
         field_vector_values.push_back(result);
         return result;
+    }
+
+    bool has_challenge(const std::string& challenge_name) const
+    {
+        return transcript_base.has_challenge(challenge_name);
     }
 
     field_pt get_challenge_field_element(const std::string& challenge_name, const size_t challenge_idx = 0) const
@@ -315,10 +341,13 @@ template <typename Composer> class Transcript {
     field_pt get_challenge_field_element_from_map(const std::string& challenge_name,
                                                   const std::string& challenge_map_name) const
     {
-        const size_t challenge_idx = transcript_base.get_challenge_index_from_map(challenge_map_name);
-        const int cache_idx = check_challenge_cache(challenge_name, challenge_idx);
+        const int challenge_idx = transcript_base.get_challenge_index_from_map(challenge_map_name);
+        if (challenge_idx == -1) {
+            return field_pt(nullptr, 1);
+        }
+        const int cache_idx = check_challenge_cache(challenge_name, static_cast<size_t>(challenge_idx));
         ASSERT(cache_idx != -1);
-        return challenge_values[static_cast<size_t>(cache_idx)][challenge_idx];
+        return challenge_values[static_cast<size_t>(cache_idx)][static_cast<size_t>(challenge_idx)];
     }
 
     barretenberg::g1::affine_element get_group_element(const std::string& element_name) const
@@ -342,20 +371,11 @@ template <typename Composer> class Transcript {
         return result;
     }
 
-    static fq_pt convert_fq(Composer* ctx, const barretenberg::fq& input)
-    {
-        uint256_t input_u256(input);
-        field_pt low(witness_pt(ctx, barretenberg::fr(input_u256.slice(0, fq_pt::NUM_LIMB_BITS * 2))));
-        field_pt hi(
-            witness_pt(ctx, barretenberg::fr(input_u256.slice(fq_pt::NUM_LIMB_BITS * 2, fq_pt::NUM_LIMB_BITS * 4))));
-        return fq_pt(low, hi);
-    };
+    static fq_pt convert_fq(Composer* ctx, const barretenberg::fq& input) { return fq_pt::from_witness(ctx, input); };
 
     static group_pt convert_g1(Composer* ctx, const barretenberg::g1::affine_element& input)
     {
-        fq_pt x = convert_fq(ctx, input.x);
-        fq_pt y = convert_fq(ctx, input.y);
-        return group_pt(x, y);
+        return group_pt::from_witness(ctx, input);
     };
 
     size_t get_num_challenges(const std::string& challenge_name) const

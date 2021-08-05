@@ -1,7 +1,7 @@
-#include "scalar_multiplication.hpp"
 #include "pippenger.hpp"
+#include "scalar_multiplication.hpp"
 #include <chrono>
-#include <gtest/gtest.h>
+#include <common/test.hpp>
 #include <srs/io.hpp>
 #include <vector>
 
@@ -385,7 +385,7 @@ TEST(scalar_multiplication, reduce_buckets_basic)
                                                                        bucket_counts,
                                                                        &bit_offsets[0],
                                                                        state.point_schedule,
-                                                                       num_points,
+                                                                       (uint32_t)state.round_counts[0],
                                                                        static_cast<uint32_t>(num_buckets),
                                                                        bucket_empty_status };
 
@@ -575,7 +575,7 @@ TEST(scalar_multiplication, radix_sort)
     free(wnaf_copy);
 }
 
-TEST(scalar_multiplication, oversized_inputs)
+HEAVY_TEST(scalar_multiplication, oversized_inputs)
 {
     // for point ranges with more than 1 << 20 points, we split into chunks of smaller multi-exps.
     // Check that this is done correctly

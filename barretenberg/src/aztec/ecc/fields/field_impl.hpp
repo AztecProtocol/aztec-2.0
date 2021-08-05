@@ -2,7 +2,7 @@
 #include <numeric/bitop/get_msb.hpp>
 #include <numeric/random/engine.hpp>
 #include <type_traits>
-
+#include <vector>
 #include "field_impl_generic.hpp"
 
 #if (BBERG_NO_ASM == 0)
@@ -15,7 +15,8 @@ namespace barretenberg {
 
 // template <class T> constexpr void field<T>::butterfly(field& left, field& right) noexcept
 // {
-// if constexpr(BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+// if constexpr(BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) || (T::modulus_1 == 0 && T::modulus_2 == 0 &&
+// T::modulus_3 == 0)) {
 
 // } else {
 //     if (std::is_constant_evaluated()) {
@@ -31,7 +32,8 @@ namespace barretenberg {
  **/
 template <class T> constexpr field<T> field<T>::operator*(const field& other) const noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         return montgomery_mul(other);
     } else {
         if (std::is_constant_evaluated()) {
@@ -43,7 +45,8 @@ template <class T> constexpr field<T> field<T>::operator*(const field& other) co
 
 template <class T> constexpr field<T> field<T>::operator*=(const field& other) noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         *this = operator*(other);
     } else {
         if (std::is_constant_evaluated()) {
@@ -62,7 +65,8 @@ template <class T> constexpr field<T> field<T>::operator*=(const field& other) n
  **/
 template <class T> constexpr field<T> field<T>::sqr() const noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         return montgomery_square();
     } else {
         if (std::is_constant_evaluated()) {
@@ -75,7 +79,8 @@ template <class T> constexpr field<T> field<T>::sqr() const noexcept
 
 template <class T> constexpr void field<T>::self_sqr() noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         *this = montgomery_square();
     } else {
         if (std::is_constant_evaluated()) {
@@ -93,7 +98,8 @@ template <class T> constexpr void field<T>::self_sqr() noexcept
  **/
 template <class T> constexpr field<T> field<T>::operator+(const field& other) const noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         return add(other);
     } else {
         if (std::is_constant_evaluated()) {
@@ -106,7 +112,8 @@ template <class T> constexpr field<T> field<T>::operator+(const field& other) co
 
 template <class T> constexpr field<T> field<T>::operator+=(const field& other) noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         (*this) = operator+(other);
     } else {
         if (std::is_constant_evaluated()) {
@@ -125,7 +132,8 @@ template <class T> constexpr field<T> field<T>::operator+=(const field& other) n
  **/
 template <class T> constexpr field<T> field<T>::operator-(const field& other) const noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         return subtract_coarse(other); // modulus - *this;
     } else {
         if (std::is_constant_evaluated()) {
@@ -138,7 +146,8 @@ template <class T> constexpr field<T> field<T>::operator-(const field& other) co
 
 template <class T> constexpr field<T> field<T>::operator-() const noexcept
 {
-    if constexpr (T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr ((T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         constexpr field p{ modulus.data[0], modulus.data[1], modulus.data[2], modulus.data[3] };
         return p - *this; // modulus - *this;
     }
@@ -148,7 +157,8 @@ template <class T> constexpr field<T> field<T>::operator-() const noexcept
 
 template <class T> constexpr field<T> field<T>::operator-=(const field& other) noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         *this = subtract_coarse(other); // subtract(other);
     } else {
         if (std::is_constant_evaluated()) {
@@ -162,7 +172,8 @@ template <class T> constexpr field<T> field<T>::operator-=(const field& other) n
 
 template <class T> constexpr void field<T>::self_neg() noexcept
 {
-    if constexpr (T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr ((T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         constexpr field p{ modulus.data[0], modulus.data[1], modulus.data[2], modulus.data[3] };
         *this = p - *this;
     } else {
@@ -173,7 +184,8 @@ template <class T> constexpr void field<T>::self_neg() noexcept
 
 template <class T> constexpr void field<T>::self_conditional_negate(const uint64_t predicate) noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         *this = predicate ? -(*this) : *this;
     } else {
         if (std::is_constant_evaluated()) {
@@ -254,7 +266,8 @@ template <class T> constexpr void field<T>::self_from_montgomery_form() noexcept
 
 template <class T> constexpr field<T> field<T>::reduce_once() const noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         return reduce();
     } else {
         if (std::is_constant_evaluated()) {
@@ -267,7 +280,8 @@ template <class T> constexpr field<T> field<T>::reduce_once() const noexcept
 
 template <class T> constexpr void field<T>::self_reduce_once() noexcept
 {
-    if constexpr (BBERG_NO_ASM || T::modulus_3 >= 0x4000000000000000ULL) {
+    if constexpr (BBERG_NO_ASM || (T::modulus_3 >= 0x4000000000000000ULL) ||
+                  (T::modulus_1 == 0 && T::modulus_2 == 0 && T::modulus_3 == 0)) {
         *this = reduce();
     } else {
         if (std::is_constant_evaluated()) {
@@ -297,10 +311,6 @@ template <class T> constexpr field<T> field<T>::pow(const uint256_t& exponent) c
     } else if (exponent == uint256_t(0)) {
         accumulator = one();
     }
-    // else if (exponent == uint256_t(1))
-    // {
-    //     accumulator = to_mul;
-    // }
     return accumulator;
 }
 
@@ -360,22 +370,32 @@ template <class T> constexpr field<T> field<T>::invert() const noexcept
 
 template <class T> void field<T>::batch_invert(field* coeffs, const size_t n) noexcept
 {
-    field* temporaries = new field[n];
+    std::vector<field> temporaries;
+    std::vector<bool> skipped;
+    temporaries.reserve(n);
+    skipped.reserve(n);
+
     field accumulator = one();
     for (size_t i = 0; i < n; ++i) {
-        temporaries[i] = accumulator;
-        accumulator = accumulator * coeffs[i];
+        temporaries.emplace_back(accumulator);
+        if (coeffs[i] == field(0)) {
+            skipped.emplace_back(true);
+        } else {
+            skipped.emplace_back(false);
+            accumulator *= coeffs[i];
+        }
     }
 
     accumulator = accumulator.invert();
 
     field T0;
     for (size_t i = n - 1; i < n; --i) {
-        T0 = accumulator * temporaries[i];
-        accumulator = accumulator * coeffs[i];
-        coeffs[i] = T0;
+        if (!skipped[i]) {
+            T0 = accumulator * temporaries[i];
+            accumulator *= coeffs[i];
+            coeffs[i] = T0;
+        }
     }
-    delete[] temporaries;
 }
 
 template <class T> constexpr field<T> field<T>::tonelli_shanks_sqrt() const noexcept
@@ -527,19 +547,11 @@ template <class T> field<T> field<T>::random_element(numeric::random::Engine* en
     if (engine == nullptr) {
         engine = &numeric::random::get_engine();
     }
-    wide_array random_data{
-        engine->get_random_uint64(), engine->get_random_uint64(), engine->get_random_uint64(),
-        engine->get_random_uint64(), engine->get_random_uint64(), engine->get_random_uint64(),
-        engine->get_random_uint64(), engine->get_random_uint64(),
-    };
-    random_data.data[7] = random_data.data[7] & 0b0000111111111111111111111111111111111111111111111111111111111111ULL;
-    random_data.data[3] = random_data.data[3] & 0b0000111111111111111111111111111111111111111111111111111111111111ULL;
-    field left{ random_data.data[0], random_data.data[1], random_data.data[2], random_data.data[3] };
-    field right{ random_data.data[4], random_data.data[5], random_data.data[6], random_data.data[7] };
-    left = left.reduce_once().reduce_once();
-    right = right.reduce_once().reduce_once();
-    field result = (left * right).reduce_once();
-    return result;
+
+    uint512_t source = engine->get_random_uint512();
+    uint512_t q(modulus);
+    uint512_t reduced = source % q;
+    return field(reduced.lo);
 }
 
 template <class T> constexpr size_t field<T>::primitive_root_log_size() noexcept

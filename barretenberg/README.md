@@ -4,40 +4,62 @@
 
 The structured reference string contains monomials up to x^{2^20}. This SRS was generated locally and is for testing and development purposes only!
 
-### Getting started
+### Dependencies
+
+cmake version 3.16 or later
+clang 9 or gcc 9 or later
+
+### Installing Dependencies (Linux)
+
+(you may need to `sudo` to move clang into `/usr/local`. An alternative is to update PATH to point to a different directory)
 
 ```
-git clone https://github.com/AztecProtocol/barretenberg
-cd barretenberg/barretenberg
-mkdir build && cd build
-cmake ..
-make [optional target name]
+apt-get update && apt-get install -y \
+  xz-utils \
+  build-essential \
+  curl \
+  && curl -SL http://releases.llvm.org/9.0.0/clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz | tar -xJC . \
+  && mv clang+llvm-9.0.0-x86_64-linux-gnu-ubuntu-18.04 /usr/local/clang_9.0.0
+
+export PATH="/usr/local/clang_9.0.0/bin:$PATH"
+export LD_LIBRARY_PATH="/usr/local/clang_9.0.0/lib:$LD_LIBRARY_PATH"
+```
+
+### Installing Dependencies (Mac)
+
+```
+brew install cmake
+brew install llvm
+```
+
+### Getting started
+
+Just run the bootstrap script.
+
+```
+./bootstrap.sh
 ```
 
 ### Parallelise the build
 
-Add the number of jobs you want to your `make` command. e.g. `make -j16`.
-
+Make sure your MAKEFLAGS environment variable is set to run jobs equal to number of cores. e.g. `MAKEFLAGS=-j32`.
 
 ### Formatting
 
-You should format the codebase before committing changes. Ensure `clang-format` is installed.
+If you've installed the C++ Vscode extension you should configure it to format on save.
+If you've run the bootstrap script, a pre-commit hook is installed to ensure code is formatted before committing.
+Ensure `clang-format` is installed. You can also format manually using the format script.
 To format the entire codebase:
 
 ```
 ./format.sh
 ```
 
-This will reorder `#includes` *which can potentially break your build*. This means you have not correctly included
-the minimal required set of headers in some files and you should fix. Always re-test your build after running this command.
-
 To format only staged changes:
 
 ```
 ./format.sh staged
 ```
-
-This will *not* reorder `#includes`, and so will never break your build. It maybe desirable to install the later as a pre-commit hook.
 
 ### Tests
 
@@ -91,32 +113,12 @@ make
 
 ### WASM build
 
-We need to install `wasi-sdk` runtime to build the WASM version. We then hook a part of the runtime so we can build
-the tests, which use `gtest`.
-
-#### OS X
-You may need to install `gsed` on OS X (`brew install gnu-sed`).
-
-```
-cd ./src
-curl -s -L https://github.com/CraneStation/wasi-sdk/releases/download/wasi-sdk-8/wasi-sdk-8.0-macos.tar.gz | tar zxfv -
-gsed -e '213i#include "../../../../wasi/stdlib-hook.h"' -i ./wasi-sdk-8.0/share/wasi-sysroot/include/stdlib.h
-```
-
-#### Linux
-
-```
-cd ./src
-curl -s -L https://github.com/CraneStation/wasi-sdk/releases/download/wasi-sdk-8/wasi-sdk-8.0-linux.tar.gz | tar zxfv -
-sed -e '213i#include "../../../../wasi/stdlib-hook.h"' -i ./wasi-sdk-8.0/share/wasi-sysroot/include/stdlib.h
-```
-
 To build:
 
 ```
 mkdir build-wasm && cd build-wasm
 cmake -DWASM=ON ..
-make
+make barretenberg.wasm
 ```
 
 There will be a binary at `./src/aztec/barretenberg.wasm` that can be copied to `barretenberg.js` for use in node and the browser.
@@ -135,47 +137,3 @@ Tests can be run like:
 ```
 wasmtime --dir=.. ./src/aztec/ecc/ecc_tests
 ```
-
-### Modules
-
-The following is the tree of module targets. e.g. to build `keccak` just `make keccack` (ignore the path).
-
-```
-crypto
-  |_keccak
-    blake2s
-    pedersen
-    sha256
-    schnorr
-ecc
-noir
-  |_noir_cli
-    noir
-numeric
-plonk
-  |_composer
-    pippenger_bench
-    proof_system
-    reference_string
-    transcript
-polynomials
-rollup
-srs
-stdlib
-  encryption
-    |_schnorr
-  merkle_tree
-  hash
-    |_keccak
-      blake2s
-      pedersen
-      sha256
-  primitives
-    |_stdlib_bit_array
-      stdlib_bool
-      stdlib_byte_array
-      stdlib_field
-      stdlib_uint
-```
-
-Their test targets are at `<module_name>_tests`.

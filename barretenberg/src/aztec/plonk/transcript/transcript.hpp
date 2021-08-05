@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "../proof_system/verification_key/verification_key.hpp"
+
 namespace transcript {
 
 struct Keccak256Hasher {
@@ -30,6 +32,8 @@ class Transcript {
     };
 
   public:
+    typedef waffle::verification_key Key;
+
     Transcript(const Manifest input_manifest,
                const HashType hash_type = HashType::Keccak256,
                const size_t challenge_bytes = 32)
@@ -50,9 +54,11 @@ class Transcript {
 
     void apply_fiat_shamir(const std::string& challenge_name /*, const bool debug = false*/);
 
+    bool has_challenge(const std::string& challenge_name) const;
+
     std::array<uint8_t, PRNG_OUTPUT_SIZE> get_challenge(const std::string& challenge_name, const size_t idx = 0) const;
 
-    size_t get_challenge_index_from_map(const std::string& challenge_map_name) const;
+    int get_challenge_index_from_map(const std::string& challenge_map_name) const;
 
     std::array<uint8_t, PRNG_OUTPUT_SIZE> get_challenge_from_map(const std::string& challenge_name,
                                                                  const std::string& challenge_map_name) const;
@@ -67,6 +73,8 @@ class Transcript {
 
     void compute_challenge_map();
 
+    void print();
+
   private:
     size_t current_round = 0;
     size_t num_challenge_bytes;
@@ -78,7 +86,7 @@ class Transcript {
     challenge current_challenge;
 
     Manifest manifest;
-    std::map<std::string, size_t> challenge_map;
+    std::map<std::string, int> challenge_map;
 };
 
 } // namespace transcript

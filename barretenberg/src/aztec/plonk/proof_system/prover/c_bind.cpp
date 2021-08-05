@@ -28,8 +28,8 @@ WASM_EXPORT fr* prover_get_scalar_multiplication_data(waffle::TurboProver* prove
 }
 
 WASM_EXPORT void prover_put_scalar_multiplication_data(waffle::TurboProver* prover,
-                                           g1::element* result,
-                                           const size_t work_item_number)
+                                                       g1::element* result,
+                                                       const size_t work_item_number)
 {
     prover->put_scalar_multiplication_data(*result, work_item_number);
 }
@@ -56,52 +56,67 @@ WASM_EXPORT void prover_put_ifft_data(waffle::TurboProver* prover, fr* result, s
     prover->put_ifft_data(result, work_item_number);
 }
 
-WASM_EXPORT void prover_execute_preamble_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_preamble_round(waffle::TurboProver* prover)
+{
     prover->execute_preamble_round();
 }
 
-WASM_EXPORT void prover_execute_first_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_first_round(waffle::TurboProver* prover)
+{
     prover->execute_first_round();
 }
 
-WASM_EXPORT void prover_execute_second_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_second_round(waffle::TurboProver* prover)
+{
     prover->execute_second_round();
 }
 
-WASM_EXPORT void prover_execute_third_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_third_round(waffle::TurboProver* prover)
+{
     prover->execute_third_round();
 }
 
-WASM_EXPORT void prover_execute_fourth_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_fourth_round(waffle::TurboProver* prover)
+{
     prover->execute_fourth_round();
 }
 
-WASM_EXPORT void prover_execute_fifth_round(waffle::TurboProver* prover) {
+WASM_EXPORT void prover_execute_fifth_round(waffle::TurboProver* prover)
+{
     prover->execute_fifth_round();
 }
 
-WASM_EXPORT size_t prover_export_proof(waffle::TurboProver* prover, uint8_t** proof_data_buf) {
+WASM_EXPORT void prover_execute_sixth_round(waffle::TurboProver* prover)
+{
+    prover->execute_sixth_round();
+}
+
+WASM_EXPORT size_t prover_export_proof(waffle::TurboProver* prover, uint8_t** proof_data_buf)
+{
     auto& proof_data = prover->export_proof().proof_data;
     *proof_data_buf = proof_data.data();
     return proof_data.size();
 }
 
-WASM_EXPORT void coset_fft_with_generator_shift(fr* coefficients, fr* constant, evaluation_domain* domain) {
+WASM_EXPORT void coset_fft_with_generator_shift(fr* coefficients, fr* constant, evaluation_domain* domain)
+{
     polynomial_arithmetic::coset_fft_with_generator_shift(coefficients, *domain, *constant);
 }
 
-WASM_EXPORT void ifft(fr* coefficients, evaluation_domain* domain) {
+WASM_EXPORT void ifft(fr* coefficients, evaluation_domain* domain)
+{
     polynomial_arithmetic::ifft(coefficients, *domain);
 }
 
-WASM_EXPORT void* new_evaluation_domain(size_t circuit_size) {
+WASM_EXPORT void* new_evaluation_domain(size_t circuit_size)
+{
     auto domain = new evaluation_domain(circuit_size);
     domain->compute_lookup_table();
     return domain;
 }
 
-WASM_EXPORT void delete_evaluation_domain(void* domain) {
+WASM_EXPORT void delete_evaluation_domain(void* domain)
+{
     delete reinterpret_cast<evaluation_domain*>(domain);
 }
-
 }

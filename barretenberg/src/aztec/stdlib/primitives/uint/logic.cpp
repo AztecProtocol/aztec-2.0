@@ -382,7 +382,7 @@ uint<Composer, Native> uint<Composer, Native>::logic_operator(const uint& other,
         ctx->assert_equal(lhs_idx, constant_idx);
     } else {
         accumulators = logic_accumulators.left;
-        witness_index = accumulators[((width >> 1) - 1)];
+        witness_index = accumulators[num_accumulators() - 1];
         witness_status = WitnessStatus::OK;
     }
 
@@ -391,16 +391,17 @@ uint<Composer, Native> uint<Composer, Native>::logic_operator(const uint& other,
         ctx->assert_equal(rhs_idx, constant_idx);
     } else {
         other.accumulators = logic_accumulators.right;
-        other.witness_index = other.accumulators[(width >> 1) - 1];
+        other.witness_index = other.accumulators[num_accumulators() - 1];
         witness_status = WitnessStatus::OK;
     }
 
     uint<Composer, Native> result(ctx);
     result.accumulators = logic_accumulators.out;
-    result.witness_index = result.accumulators[(width >> 1) - 1];
+    result.witness_index = result.accumulators[num_accumulators() - 1];
     result.witness_status = WitnessStatus::OK;
     return result;
 }
+
 template class uint<waffle::TurboComposer, uint8_t>;
 template class uint<waffle::TurboComposer, uint16_t>;
 template class uint<waffle::TurboComposer, uint32_t>;

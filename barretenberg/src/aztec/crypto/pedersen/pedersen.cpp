@@ -1,4 +1,5 @@
 #include "./pedersen.hpp"
+#include <common/throw_or_abort.hpp>
 #include <iostream>
 
 #ifndef NO_MULTITHREADING
@@ -9,19 +10,85 @@ namespace crypto {
 namespace pedersen {
 namespace {
 
-static constexpr size_t num_generators = 128;
+// The number of unique base points with precomputed lookup tables
+#ifdef __wasm__
+static constexpr size_t num_generators = 64;
+#else
+static constexpr size_t num_generators = 2048;
+#endif
+
+/**
+ * The number of bits in each precomputed lookup table. Regular pedersen hashes use 254 bits, some other
+ * fixed-base scalar mul subroutines (e.g. verifying schnorr signatures) use 256 bits.
+ *
+ * When representing an n-bit integer via a WNAF with a window size of b-bits,
+ * one requires a minimum of min = (n/b + 1) windows to represent any integer
+ * (The last "window" will essentially be a bit saying if the integer is odd or even)
+ * if n = 256 and b = 2, min = 129 windows
+ */
 static constexpr size_t bit_length = 256;
-static constexpr size_t quad_length = bit_length / 2;
+static constexpr size_t quad_length = bit_length / 2 + 1;
+
 static std::array<grumpkin::g1::affine_element, num_generators> generators;
 static std::vector<std::array<fixed_base_ladder, quad_length>> ladders;
 static std::vector<std::array<fixed_base_ladder, quad_length>> hash_ladders;
+static std::array<fixed_base_ladder, quad_length> g1_ladder;
 static bool inited = false;
 
+/**
+ * Precompute ladders and hash ladders
+ *
+ * `ladders` contains precomputed multiples of a base point
+ *
+ * Each entry in `ladders` is a `fixed_base_ladder` struct, which contains a pair of points,
+ * `one` and `three`
+ *
+ * e.g. a size-4 `ladder` over a base point `P`, will have the following structure:
+ *
+ *    ladder[3].one = [P]
+ *    ladder[3].three = 3[P]
+ *    ladder[2].one = 4[P]
+ *    ladder[2].three = 12[P]
+ *    ladder[1].one = 16[P]
+ *    ladder[1].three = 3*16[P]
+ *    ladder[0].one = 64[P] + [P]
+ *    ladder[0].three = 3*64[P]
+ *
+ * i.e. for a ladder size of `n`, we have the following:
+ *
+ *                        n - 1 - i
+ *    ladder[i].one   = (4           ).[P]
+ *                          n - 1 - i
+ *    ladder[i].three = (3*4           ).[P]
+ *
+ * When a fixed-base scalar multiplier is decomposed into a size-2 WNAF, each ladder entry represents
+ * the positive half of a WNAF table
+ *
+ * `hash_ladders` are stitched together from two `ladders` objects to preserve the uniqueness of a pedersen hash.
+ * If a pedersen hash input is a 256-bit scalar, using a single generator point would mean that multiple inputs would
+ * hash to the same output.
+ *
+ * e.g. if the grumpkin curve order is `n`, then hash(x) = hash(x + n) if we use a single generator
+ *
+ * For this reason, a hash ladder is built in a way that enables hashing the 252 higher bits of a 256 bit scalar
+ * according to one generator and the four lower bits according to a second.
+ *
+ * Specifically,
+ *
+ *  1. For j=0,...,126, hash_ladders[i][j]=ladders[2*i][j] (i.e. generator 2 * i)
+ *  2. For j=127,128  hash_ladders[i][j]=ladders[2*i+1][j] (i.e. generator 2 * i + 1)
+ *
+ * This is sufficient to create an injective hash for 256 bit strings
+ * The reason we need 127 elements to hash 252 bits, or equivalently 126 quads, is that the first element of the ladder
+ * is used simply to add the  "normalization factor" 4^{127}*[P] (so ladder[0].three is never used); this addition makes
+ * all resultant scalars positive. When wanting to hash e.g. 254 instead of 256 bits, we will start the ladder one step
+ * forward - this happends in `get_ladder_internal`
+ **/
 const auto init = []() {
     generators = grumpkin::g1::derive_generators<num_generators>();
     ladders.resize(num_generators);
     hash_ladders.resize(num_generators);
-    constexpr size_t first_generator_segment = 126;
+    constexpr size_t first_generator_segment = quad_length - 2;
     constexpr size_t second_generator_segment = 2;
     for (size_t i = 0; i < num_generators; ++i) {
         compute_fixed_base_ladder(generators[i], &ladders[i][0]);
@@ -36,6 +103,9 @@ const auto init = []() {
                 ladders[i * 2 + 1][j + (quad_length - second_generator_segment)];
         }
     }
+
+    compute_fixed_base_ladder(grumpkin::g1::one, &g1_ladder[0]);
+
     inited = true;
     return 1;
 };
@@ -100,7 +170,8 @@ void compute_fixed_base_ladder(const grumpkin::g1::affine_element& generator, fi
     free(ladder_temp);
 }
 
-const fixed_base_ladder* get_ladder(const size_t generator_index, const size_t num_bits)
+const fixed_base_ladder* get_ladder_internal(std::array<fixed_base_ladder, quad_length> const& ladder,
+                                             const size_t num_bits)
 {
     if (!inited) {
         init();
@@ -115,8 +186,27 @@ const fixed_base_ladder* get_ladder(const size_t generator_index, const size_t n
             ++n;
         }
     }
-    const fixed_base_ladder* result = &ladders[generator_index][quad_length - n - 1];
+    const fixed_base_ladder* result = &ladder[quad_length - n - 1];
     return result;
+}
+
+const fixed_base_ladder* get_g1_ladder(const size_t num_bits)
+{
+    if (!inited) {
+        init();
+    }
+    return get_ladder_internal(g1_ladder, num_bits);
+}
+
+const fixed_base_ladder* get_ladder(const size_t generator_index, const size_t num_bits)
+{
+    if (!inited) {
+        init();
+    }
+    if (generator_index >= num_generators) {
+        throw_or_abort(format("Generator index out of range: ", generator_index));
+    }
+    return get_ladder_internal(ladders[generator_index], num_bits);
 }
 
 const fixed_base_ladder* get_hash_ladder(const size_t generator_index, const size_t num_bits)
@@ -124,24 +214,19 @@ const fixed_base_ladder* get_hash_ladder(const size_t generator_index, const siz
     if (!inited) {
         init();
     }
-    // find n, such that 2n + 1 >= num_bits
-    size_t n;
-    if (num_bits == 0) {
-        n = 0;
-    } else {
-        n = (num_bits - 1) >> 1;
-        if (((n << 1) + 1) < num_bits) {
-            ++n;
-        }
+    if (generator_index >= num_generators) {
+        throw_or_abort(format("Generator index out of range: ", generator_index));
     }
-    const fixed_base_ladder* result = &hash_ladders[generator_index][quad_length - n - 1];
-    return result;
+    return get_ladder_internal(hash_ladders[generator_index], num_bits);
 }
 
 grumpkin::g1::affine_element get_generator(const size_t generator_index)
 {
     if (!inited) {
         init();
+    }
+    if (generator_index >= num_generators) {
+        throw_or_abort(format("Generator index out of range: ", generator_index));
     }
     return generators[generator_index];
 }
@@ -187,28 +272,6 @@ grumpkin::g1::element hash_single(const barretenberg::fr& in, const size_t hash_
     return accumulator;
 }
 
-grumpkin::fq compress_eight_native(const std::array<grumpkin::fq, 8>& inputs)
-{
-    if (!inited) {
-        init();
-    }
-    grumpkin::g1::element out[8];
-
-#ifndef NO_MULTITHREADING
-#pragma omp parallel for num_threads(8)
-#endif
-    for (size_t i = 0; i < 8; ++i) {
-        out[i] = hash_single(inputs[i], 16 + i);
-    }
-
-    grumpkin::g1::element r = out[0];
-    for (size_t i = 1; i < 8; ++i) {
-        r = out[i] + r;
-    }
-    r = r.normalize();
-    return r.x;
-}
-
 grumpkin::fq compress_native(const grumpkin::fq& left, const grumpkin::fq& right, const size_t hash_index)
 {
     if (!inited) {
@@ -236,28 +299,32 @@ grumpkin::fq compress_native(const grumpkin::fq& left, const grumpkin::fq& right
 #endif
 }
 
-grumpkin::fq compress_native(const std::vector<grumpkin::fq>& inputs)
+grumpkin::g1::affine_element encrypt_native(const std::vector<grumpkin::fq>& inputs, const size_t hash_index)
 {
     std::vector<grumpkin::g1::element> out(inputs.size());
     if (!inited) {
         init();
     }
 #ifndef NO_MULTITHREADING
-#pragma omp parallel for
+#pragma omp parallel for num_threads(inputs.size())
 #endif
     for (size_t i = 0; i < inputs.size(); ++i) {
-        out[i] = hash_single(inputs[i], i);
+        out[i] = hash_single(inputs[i], i + hash_index);
     }
 
     grumpkin::g1::element r = out[0];
     for (size_t i = 1; i < inputs.size(); ++i) {
         r = out[i] + r;
     }
-    r = r.normalize();
-    return r.is_point_at_infinity() ? grumpkin::fq(0) : r.x;
+    return r.is_point_at_infinity() ? grumpkin::g1::affine_element(0, 0) : grumpkin::g1::affine_element(r);
 }
 
-std::vector<uint8_t> compress_native(const std::vector<uint8_t>& input)
+grumpkin::fq compress_native(const std::vector<grumpkin::fq>& inputs, const size_t hash_index)
+{
+    return encrypt_native(inputs, hash_index).x;
+}
+
+grumpkin::fq compress_native_buffer_to_field(const std::vector<uint8_t>& input)
 {
     const size_t num_bytes = input.size();
     const size_t bytes_per_element = 31;
@@ -285,8 +352,22 @@ std::vector<uint8_t> compress_native(const std::vector<uint8_t>& input)
     }
 
     grumpkin::fq result_fq = compress_native(elements);
-    uint256_t result_u256(result_fq);
+    return result_fq;
+}
 
+std::vector<uint8_t> compress_native(const std::vector<uint8_t>& input)
+{
+    const auto result_fq = compress_native_buffer_to_field(input);
+    uint256_t result_u256(result_fq);
+    const size_t num_bytes = input.size();
+
+    bool is_zero = true;
+    for (const auto byte : input) {
+        is_zero = is_zero && (byte == static_cast<uint8_t>(0));
+    }
+    if (is_zero) {
+        result_u256 = num_bytes;
+    }
     std::vector<uint8_t> result_buffer;
     result_buffer.reserve(32);
     for (size_t i = 0; i < 32; ++i) {

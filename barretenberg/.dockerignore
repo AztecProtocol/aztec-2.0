@@ -1,6 +1,7 @@
 build*
 docker*
 .*
-src/wasi-sdk-8.0
-srs_db/ignition
+src/wasi-sdk*
+srs_db/ignition/transcript*
 **/node_modules
+**/fixtures/**/proving_key

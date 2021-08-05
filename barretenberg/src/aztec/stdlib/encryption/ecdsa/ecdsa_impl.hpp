@@ -13,10 +13,8 @@ bool_t<Composer> verify_signature(const stdlib::byte_array<Composer>& message,
 {
     Composer* ctx = message.get_context() ? message.get_context() : public_key.x.context;
 
-    stdlib::bit_array<Composer> message_schedule(message);
-
     stdlib::byte_array<Composer> hashed_message =
-        static_cast<stdlib::byte_array<Composer>>(stdlib::sha256<Composer>(message_schedule));
+        static_cast<stdlib::byte_array<Composer>>(stdlib::sha256<Composer>(message));
 
     Fr z(hashed_message);
     z.assert_is_in_field();
@@ -38,7 +36,6 @@ bool_t<Composer> verify_signature(const stdlib::byte_array<Composer>& message,
     Fr result_mod_r(result_x_lo, result_x_hi);
     result_mod_r.assert_is_in_field();
     r.assert_is_in_field();
-
     ctx->assert_equal(result_mod_r.binary_basis_limbs[0].element.witness_index,
                       r.binary_basis_limbs[0].element.witness_index);
     ctx->assert_equal(result_mod_r.binary_basis_limbs[1].element.witness_index,

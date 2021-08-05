@@ -1,6 +1,8 @@
 #pragma once
 #include <array>
 #include <stdlib/primitives/uint/uint.hpp>
+#include <stdlib/primitives/packed_byte_array/packed_byte_array.hpp>
+#include <stdlib/primitives/byte_array/byte_array.hpp>
 
 namespace waffle {
 class StandardComposer;
@@ -18,12 +20,10 @@ std::array<uint32<Composer>, 8> sha256_block(const std::array<uint32<Composer>, 
                                              const std::array<uint32<Composer>, 16>& input);
 
 template <typename Composer> byte_array<Composer> sha256_block(const byte_array<Composer>& input);
-
-template <typename Composer> bit_array<Composer> sha256(const bit_array<Composer>& input);
+template <typename Composer> packed_byte_array<Composer> sha256(const packed_byte_array<Composer>& input);
 
 extern template byte_array<waffle::TurboComposer> sha256_block(const byte_array<waffle::TurboComposer>& input);
-extern template bit_array<waffle::StandardComposer> sha256(const bit_array<waffle::StandardComposer>& input);
-extern template bit_array<waffle::TurboComposer> sha256(const bit_array<waffle::TurboComposer>& input);
+extern template packed_byte_array<waffle::TurboComposer> sha256(const packed_byte_array<waffle::TurboComposer>& input);
 
 } // namespace stdlib
 } // namespace plonk

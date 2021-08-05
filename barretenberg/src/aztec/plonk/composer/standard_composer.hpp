@@ -4,19 +4,48 @@
 #include <plonk/transcript/manifest.hpp>
 
 namespace waffle {
+enum StandardSelectors {
+    QM = 0,
+    QC = 1,
+    Q1 = 2,
+    Q2 = 3,
+    Q3 = 4,
+};
+inline std::vector<ComposerBase::SelectorProperties> standard_sel_props()
+{
+    // We set the use_quotient_mid variable to false in composer settings so as to
+    // disallow fft computations of size 2n as the degrees of polynomials slighly change
+    // on introducing the new vanishing polynomial with some roots cut out.
+    std::vector<ComposerBase::SelectorProperties> result{
+        { "q_m", false, false }, { "q_c", false, false }, { "q_1", false, false },
+        { "q_2", false, false }, { "q_3", false, false },
+    };
+    return result;
+}
+
 class StandardComposer : public ComposerBase {
   public:
+    static constexpr ComposerType type = ComposerType::STANDARD;
+    static constexpr size_t UINT_LOG2_BASE = 2;
+
     StandardComposer(const size_t size_hint = 0)
+        : ComposerBase(5, size_hint, standard_sel_props())
     {
-        features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
         w_r.reserve(size_hint);
         w_o.reserve(size_hint);
-        q_m.reserve(size_hint);
-        q_1.reserve(size_hint);
-        q_2.reserve(size_hint);
-        q_3.reserve(size_hint);
-        q_c.reserve(size_hint);
+        zero_idx = put_constant_variable(barretenberg::fr::zero());
+    };
+
+    // used for enabling MIMCComposer to access ComposerBase constructor
+    StandardComposer(const size_t selector_num,
+                     const size_t size_hint,
+                     const std::vector<SelectorProperties> selector_properties)
+        : ComposerBase(selector_num, size_hint, selector_properties)
+    {
+        w_l.reserve(size_hint);
+        w_r.reserve(size_hint);
+        w_o.reserve(size_hint);
         zero_idx = put_constant_variable(barretenberg::fr::zero());
     };
 
@@ -25,34 +54,22 @@ class StandardComposer : public ComposerBase {
                            size_hint){};
 
     StandardComposer(std::unique_ptr<ReferenceStringFactory>&& crs_factory, const size_t size_hint = 0)
-        : ComposerBase(std::move(crs_factory))
+        : ComposerBase(std::move(crs_factory), 5, size_hint, standard_sel_props())
     {
-        features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
         w_r.reserve(size_hint);
         w_o.reserve(size_hint);
-        q_m.reserve(size_hint);
-        q_1.reserve(size_hint);
-        q_2.reserve(size_hint);
-        q_3.reserve(size_hint);
-        q_c.reserve(size_hint);
         zero_idx = put_constant_variable(barretenberg::fr::zero());
     }
 
     StandardComposer(std::shared_ptr<proving_key> const& p_key,
                      std::shared_ptr<verification_key> const& v_key,
                      size_t size_hint = 0)
-        : ComposerBase(p_key, v_key)
+        : ComposerBase(p_key, v_key, 5, size_hint, standard_sel_props())
     {
-        features |= static_cast<size_t>(Features::BASIC_ARITHMETISATION);
         w_l.reserve(size_hint);
         w_r.reserve(size_hint);
         w_o.reserve(size_hint);
-        q_m.reserve(size_hint);
-        q_1.reserve(size_hint);
-        q_2.reserve(size_hint);
-        q_3.reserve(size_hint);
-        q_c.reserve(size_hint);
         zero_idx = put_constant_variable(barretenberg::fr::zero());
     }
 
@@ -60,7 +77,7 @@ class StandardComposer : public ComposerBase {
     StandardComposer& operator=(StandardComposer&& other) = default;
     ~StandardComposer() {}
 
-    void assert_equal_constant(uint32_t const a_idx, barretenberg::fr const& b);
+    void assert_equal_constant(uint32_t const a_idx, barretenberg::fr const& b, std::string const& msg = "");
 
     virtual std::shared_ptr<proving_key> compute_proving_key() override;
     virtual std::shared_ptr<verification_key> compute_verification_key() override;
@@ -95,16 +112,9 @@ class StandardComposer : public ComposerBase {
     void create_dummy_gates();
     size_t get_num_constant_gates() const override { return 0; }
 
-    uint32_t zero_idx = 0;
-
-    // these are variables that we have used a gate on, to enforce that they are equal to a defined value
+    // these are variables that we have used a gate on, to enforce that they are
+    // equal to a defined value
     std::map<barretenberg::fr, uint32_t> constant_variables;
-
-    std::vector<barretenberg::fr> q_m;
-    std::vector<barretenberg::fr> q_1;
-    std::vector<barretenberg::fr> q_2;
-    std::vector<barretenberg::fr> q_3;
-    std::vector<barretenberg::fr> q_c;
 
     static transcript::Manifest create_manifest(const size_t num_public_inputs)
     {
@@ -115,27 +125,34 @@ class StandardComposer : public ComposerBase {
         const transcript::Manifest output = transcript::Manifest(
             { transcript::Manifest::RoundManifest(
                   { { "circuit_size", 4, true }, { "public_input_size", 4, true } }, "init", 1),
-              transcript::Manifest::RoundManifest({ { "public_inputs", public_input_size, false },
-                                                    { "W_1", g1_size, false },
-                                                    { "W_2", g1_size, false },
-                                                    { "W_3", g1_size, false } },
-                                                  "beta",
-                                                  2),
+              transcript::Manifest::RoundManifest({}, "eta", 0),
+              transcript::Manifest::RoundManifest(
+                  {
+                      { "public_inputs", public_input_size, false },
+                      { "W_1", g1_size, false },
+                      { "W_2", g1_size, false },
+                      { "W_3", g1_size, false },
+                  },
+                  "beta",
+                  2),
               transcript::Manifest::RoundManifest({ { "Z", g1_size, false } }, "alpha", 1),
               transcript::Manifest::RoundManifest(
                   { { "T_1", g1_size, false }, { "T_2", g1_size, false }, { "T_3", g1_size, false } }, "z", 1),
-              transcript::Manifest::RoundManifest({ { "w_1", fr_size, false },
-                                                    { "w_2", fr_size, false },
-                                                    { "w_3", fr_size, false },
-                                                    { "z_omega", fr_size, false },
-                                                    { "sigma_1", fr_size, false },
-                                                    { "sigma_2", fr_size, false },
-                                                    { "r", fr_size, false },
-                                                    { "w_3_omega", fr_size, false },
-                                                    { "t", fr_size, true } },
-                                                  "nu",
-                                                  7,
-                                                  true),
+              transcript::Manifest::RoundManifest(
+                  {
+                      { "t", fr_size, true, -1 },
+                      { "w_1", fr_size, false, 0 },
+                      { "w_2", fr_size, false, 1 },
+                      { "w_3", fr_size, false, 2 },
+                      { "sigma_1", fr_size, false, 3 },
+                      { "sigma_2", fr_size, false, 4 },
+                      { "r", fr_size, false, 5 },
+                      { "z_omega", fr_size, false, -1 },
+                      { "w_3_omega", fr_size, false, 2 },
+                  },
+                  "nu",
+                  7,
+                  true),
               transcript::Manifest::RoundManifest(
                   { { "PI_Z", g1_size, false }, { "PI_Z_OMEGA", g1_size, false } }, "separator", 1) });
         return output;
@@ -150,33 +167,40 @@ class StandardComposer : public ComposerBase {
         const transcript::Manifest output = transcript::Manifest(
             { transcript::Manifest::RoundManifest(
                   { { "circuit_size", 4, true }, { "public_input_size", 4, true } }, "init", 1),
-              transcript::Manifest::RoundManifest({ { "public_inputs", public_input_size, false },
-                                                    { "W_1", g1_size, false },
-                                                    { "W_2", g1_size, false },
-                                                    { "W_3", g1_size, false } },
-                                                  "beta",
-                                                  2),
+              transcript::Manifest::RoundManifest({}, "eta", 0),
+              transcript::Manifest::RoundManifest(
+                  {
+                      { "public_inputs", public_input_size, false },
+                      { "W_1", g1_size, false },
+                      { "W_2", g1_size, false },
+                      { "W_3", g1_size, false },
+                  },
+                  "beta",
+                  2),
               transcript::Manifest::RoundManifest({ { "Z", g1_size, false } }, "alpha", 1),
               transcript::Manifest::RoundManifest(
                   { { "T_1", g1_size, false }, { "T_2", g1_size, false }, { "T_3", g1_size, false } }, "z", 1),
-              transcript::Manifest::RoundManifest({ { "w_1", fr_size, false },
-                                                    { "w_2", fr_size, false },
-                                                    { "w_3", fr_size, false },
-                                                    { "z_omega", fr_size, false },
-                                                    { "sigma_1", fr_size, false },
-                                                    { "sigma_2", fr_size, false },
-                                                    { "sigma_3", fr_size, false },
-                                                    { "q_1", fr_size, false },
-                                                    { "q_2", fr_size, false },
-                                                    { "q_3", fr_size, false },
-                                                    { "q_m", fr_size, false },
-                                                    { "q_c", fr_size, false },
-                                                    { "z", fr_size, false },
-                                                    { "w_3_omega", fr_size, false },
-                                                    { "t", fr_size, true } },
-                                                  "nu",
-                                                  12,
-                                                  true),
+              transcript::Manifest::RoundManifest(
+                  {
+                      { "t", fr_size, true, -1 },
+                      { "w_1", fr_size, false, 0 },
+                      { "w_2", fr_size, false, 1 },
+                      { "w_3", fr_size, false, 2 },
+                      { "sigma_1", fr_size, false, 3 },
+                      { "sigma_2", fr_size, false, 4 },
+                      { "sigma_3", fr_size, false, 5 },
+                      { "q_1", fr_size, false, 6 },
+                      { "q_2", fr_size, false, 7 },
+                      { "q_3", fr_size, false, 8 },
+                      { "q_m", fr_size, false, 9 },
+                      { "q_c", fr_size, false, 10 },
+                      { "z", fr_size, false, 11 },
+                      { "z_omega", fr_size, false, -1 },
+                      { "w_3_omega", fr_size, false, 0 },
+                  },
+                  "nu",
+                  12,
+                  true),
               transcript::Manifest::RoundManifest(
                   { { "PI_Z", g1_size, false }, { "PI_Z_OMEGA", g1_size, false } }, "separator", 1) });
         return output;

@@ -4,6 +4,7 @@
 
 __extension__ using uint128_t = unsigned __int128;
 
+namespace std {
 inline std::ostream& operator<<(std::ostream& os, uint128_t const& a)
 {
     std::ios_base::fmtflags f(os.flags());
@@ -11,3 +12,4 @@ inline std::ostream& operator<<(std::ostream& os, uint128_t const& a)
     os.flags(f);
     return os;
 }
+} // namespace std

@@ -2,6 +2,16 @@
 #include <polynomials/polynomial_arithmetic.hpp>
 
 namespace waffle {
+
+// In all the constructors below, the pippenger_runtime_state takes (n + 1) as the input
+// as the degree of t_{high}(X) is (n + 1) for standard plonk. Refer to 
+// ./src/aztec/plonk/proof_system/prover/prover.cpp/ProverBase::compute_quotient_pre_commitment
+// for more details on this.
+//
+// NOTE: If the number of roots cut out of the vanishing polynomial is increased beyond 4,
+// the degree of t_{mid}, etc could also increase. Thus, the size of pippenger multi-scalar
+// multiplications must be changed accordingly!
+//
 proving_key::proving_key(const size_t num_gates,
                          const size_t num_inputs,
                          std::shared_ptr<ProverReferenceString> const& crs)
@@ -11,7 +21,33 @@ proving_key::proving_key(const size_t num_gates,
     , mid_domain(2 * n, n > min_thread_block ? n : 2 * n)
     , large_domain(4 * n, n > min_thread_block ? n : 4 * n)
     , reference_string(crs)
-    , pippenger_runtime_state(n)
+    , pippenger_runtime_state(n + 1)
+{
+    init();
+}
+
+proving_key::proving_key(proving_key_data&& data, std::shared_ptr<ProverReferenceString> const& crs)
+    : n(data.n)
+    , num_public_inputs(data.num_public_inputs)
+    , constraint_selectors(std::move(data.constraint_selectors))
+    , constraint_selector_ffts(std::move(data.constraint_selector_ffts))
+    , permutation_selectors(std::move(data.permutation_selectors))
+    , permutation_selectors_lagrange_base(std::move(data.permutation_selectors_lagrange_base))
+    , permutation_selector_ffts(std::move(data.permutation_selector_ffts))
+    , small_domain(n, n)
+    , mid_domain(2 * n, n > min_thread_block ? n : 2 * n)
+    , large_domain(4 * n, n > min_thread_block ? n : 4 * n)
+    , reference_string(crs)
+    , pippenger_runtime_state(n + 1)
+    , contains_recursive_proof(data.contains_recursive_proof)
+    , recursive_proof_public_input_indices(std::move(data.recursive_proof_public_input_indices))
+{
+    init();
+    // TODO: Currently only supporting TurboComposer in serialization!
+    std::copy(turbo_polynomial_manifest, turbo_polynomial_manifest + 20, std::back_inserter(polynomial_manifest));
+}
+
+void proving_key::init()
 {
     if (n != 0) {
         small_domain.compute_lookup_table();
@@ -19,24 +55,7 @@ proving_key::proving_key(const size_t num_gates,
         large_domain.compute_lookup_table();
     }
 
-    barretenberg::polynomial w_1_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
-    barretenberg::polynomial w_2_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
-    barretenberg::polynomial w_3_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
-    barretenberg::polynomial w_4_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
-    barretenberg::polynomial z_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
-
-    memset((void*)&w_1_fft[0], 0x00, sizeof(barretenberg::fr) * (4 * n + 4));
-    memset((void*)&w_2_fft[0], 0x00, sizeof(barretenberg::fr) * (4 * n + 4));
-    memset((void*)&w_3_fft[0], 0x00, sizeof(barretenberg::fr) * (4 * n + 4));
-    memset((void*)&w_4_fft[0], 0x00, sizeof(barretenberg::fr) * (4 * n + 4));
-    memset((void*)&z_fft[0], 0x00, sizeof(barretenberg::fr) * (4 * n + 4));
-    // memset((void*)&z[0], 0x00, sizeof(barretenberg::fr) * n);
-
-    wire_ffts.insert({ "w_1_fft", std::move(w_1_fft) });
-    wire_ffts.insert({ "w_2_fft", std::move(w_2_fft) });
-    wire_ffts.insert({ "w_3_fft", std::move(w_3_fft) });
-    wire_ffts.insert({ "w_4_fft", std::move(w_4_fft) });
-    wire_ffts.insert({ "z_fft", std::move(z_fft) });
+    reset();
 
     lagrange_1 = barretenberg::polynomial(4 * n, 4 * n + 8);
     barretenberg::polynomial_arithmetic::compute_lagrange_polynomial_fft(
@@ -50,6 +69,16 @@ proving_key::proving_key(const size_t num_gates,
     lagrange_1.add_lagrange_base_coefficient(lagrange_1[6]);
     lagrange_1.add_lagrange_base_coefficient(lagrange_1[7]);
 
+    // The opening polynomial W_{\script{z}}(X) in round 5 of prover's algorithm has degree n. However,
+    // as explained in (./src/aztec/plonk/proof_system/prover/prover.cpp/ProverBase::compute_quotient_pre_commitment),
+    // for standard plonk (program_width = 3) and number of roots cut out of the vanishing polynomial is 4,
+    // the degree of the quotient polynomial t(X) is 3n. Thus, the number of coefficients in t_{high} is (n + 1).
+    // But our prover algorithm assumes that each of t_{low}, t_{mid}, t_{high} is of degree (n - 1) (i.e. n coefficients in each).
+    // Note that:
+    // deg(W_{\script{z}}) = max{ deg(t_{low}), deg(t_{mid}), deg(t_{high}), deg(a), deg(b), ... }
+    // => deg(W_{\script{z}}) = n + 1 when program_width is 3!
+    // Therefore, when program_width is 3, we need to allow the degree of the opening polynomial to be (n + 1) and NOT n.
+    //
     opening_poly = barretenberg::polynomial(n, n);
     shifted_opening_poly = barretenberg::polynomial(n, n);
     linear_poly = barretenberg::polynomial(n, n);
@@ -62,30 +91,13 @@ proving_key::proving_key(const size_t num_gates,
     memset((void*)&linear_poly[0], 0x00, sizeof(barretenberg::fr) * n);
     memset((void*)&quotient_mid[0], 0x00, sizeof(barretenberg::fr) * 2 * n);
     memset((void*)&quotient_large[0], 0x00, sizeof(barretenberg::fr) * 4 * n);
-
-    // size_t memory = opening_poly.get_max_size() * 32;
-    // memory += (linear_poly.get_max_size() * 32);
-    // memory += (shifted_opening_poly.get_max_size() * 32);
-    // memory += (opening_poly.get_max_size() * 32);
-    // memory += (lagrange_1.get_max_size() * 32);
-    // memory += (w_1_fft.get_max_size() * 32);
-    // memory += (w_2_fft.get_max_size() * 32);
-    // memory += (w_3_fft.get_max_size() * 32);
-    // memory += (w_4_fft.get_max_size() * 32);
-    // memory += (z_fft.get_max_size() * 32);
-    // memory += (z.get_max_size() * 32);
-    // memory += (small_domain.size * 2 * 32);
-    // memory += (mid_domain.size * 2 * 32);
-    // memory += (large_domain.size * 2 * 32);
-    // memory += (quotient_mid.get_max_size() * 32);
-    // memory += (quotient_large.get_max_size() * 32);
-
-    // printf("proving key allocated memory = %lu \n", memory / (1024UL * 1024UL));
 }
 
 void proving_key::reset()
 {
     wire_ffts.clear();
+
+    opening_poly = barretenberg::polynomial(n, n);
 
     barretenberg::polynomial w_1_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
     barretenberg::polynomial w_2_fft = barretenberg::polynomial(4 * n + 4, 4 * n + 4);
@@ -110,6 +122,7 @@ proving_key::proving_key(const proving_key& other)
     : n(other.n)
     , num_public_inputs(other.num_public_inputs)
     , constraint_selectors(other.constraint_selectors)
+    , constraint_selectors_lagrange_base(other.constraint_selectors_lagrange_base)
     , constraint_selector_ffts(other.constraint_selector_ffts)
     , permutation_selectors(other.permutation_selectors)
     , permutation_selectors_lagrange_base(other.permutation_selectors_lagrange_base)
@@ -125,13 +138,17 @@ proving_key::proving_key(const proving_key& other)
     , linear_poly(other.linear_poly)
     , quotient_mid(other.quotient_mid)
     , quotient_large(other.quotient_large)
-    , pippenger_runtime_state(n)
+    , pippenger_runtime_state(n + 1)
+    , polynomial_manifest(other.polynomial_manifest)
+    , contains_recursive_proof(other.contains_recursive_proof)
+    , recursive_proof_public_input_indices(other.recursive_proof_public_input_indices)
 {}
 
 proving_key::proving_key(proving_key&& other)
     : n(other.n)
     , num_public_inputs(other.num_public_inputs)
     , constraint_selectors(other.constraint_selectors)
+    , constraint_selectors_lagrange_base(other.constraint_selectors_lagrange_base)
     , constraint_selector_ffts(other.constraint_selector_ffts)
     , permutation_selectors(other.permutation_selectors)
     , permutation_selectors_lagrange_base(other.permutation_selectors_lagrange_base)
@@ -146,7 +163,9 @@ proving_key::proving_key(proving_key&& other)
     , shifted_opening_poly(std::move(other.shifted_opening_poly))
     , linear_poly(std::move(other.linear_poly))
     , pippenger_runtime_state(std::move(other.pippenger_runtime_state))
-
+    , polynomial_manifest(std::move(other.polynomial_manifest))
+    , contains_recursive_proof(other.contains_recursive_proof)
+    , recursive_proof_public_input_indices(std::move(other.recursive_proof_public_input_indices))
 {}
 
 proving_key& proving_key::operator=(proving_key&& other)
@@ -154,6 +173,7 @@ proving_key& proving_key::operator=(proving_key&& other)
     n = other.n;
     num_public_inputs = other.num_public_inputs;
     constraint_selectors = std::move(other.constraint_selectors);
+    constraint_selectors_lagrange_base = std::move(other.constraint_selectors_lagrange_base);
     constraint_selector_ffts = std::move(other.constraint_selector_ffts);
     permutation_selectors = std::move(other.permutation_selectors);
     permutation_selectors_lagrange_base = std::move(other.permutation_selectors_lagrange_base);
@@ -168,6 +188,10 @@ proving_key& proving_key::operator=(proving_key&& other)
     shifted_opening_poly = std::move(other.shifted_opening_poly);
     linear_poly = std::move(other.linear_poly);
     pippenger_runtime_state = std::move(other.pippenger_runtime_state);
+    polynomial_manifest = std::move(other.polynomial_manifest);
+    contains_recursive_proof = other.contains_recursive_proof;
+    recursive_proof_public_input_indices = std::move(other.recursive_proof_public_input_indices);
+
     return *this;
 }
 } // namespace waffle

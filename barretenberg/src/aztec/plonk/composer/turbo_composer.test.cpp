@@ -1,6 +1,7 @@
 #include "turbo_composer.hpp"
 #include <crypto/pedersen/pedersen.hpp>
 #include <gtest/gtest.h>
+#include <plonk/proof_system/proving_key/serialize.hpp>
 
 using namespace barretenberg;
 
@@ -15,12 +16,38 @@ TEST(turbo_composer, base_case)
     composer.add_public_variable(a);
 
     waffle::TurboProver prover = composer.create_prover();
-
     waffle::TurboVerifier verifier = composer.create_verifier();
 
     waffle::plonk_proof proof = prover.construct_proof();
 
     bool result = verifier.verify_proof(proof); // instance, prover.reference_string.SRS_T2);
+    EXPECT_EQ(result, true);
+}
+
+TEST(turbo_composer, composer_from_serialized_keys)
+{
+    waffle::TurboComposer composer = waffle::TurboComposer();
+    fr a = fr::one();
+    composer.add_public_variable(a);
+
+    auto pk_buf = to_buffer(*composer.compute_proving_key());
+    auto vk_buf = to_buffer(*composer.compute_verification_key());
+    auto pk_data = from_buffer<waffle::proving_key_data>(pk_buf);
+    auto vk_data = from_buffer<waffle::verification_key_data>(vk_buf);
+
+    auto crs = std::make_unique<waffle::FileReferenceStringFactory>("../srs_db");
+    auto proving_key = std::make_shared<waffle::proving_key>(std::move(pk_data), crs->get_prover_crs(pk_data.n));
+    auto verification_key = std::make_shared<waffle::verification_key>(std::move(vk_data), crs->get_verifier_crs());
+
+    waffle::TurboComposer composer2 = waffle::TurboComposer(proving_key, verification_key);
+    composer2.add_public_variable(a);
+
+    waffle::TurboProver prover = composer2.create_prover();
+    waffle::TurboVerifier verifier = composer2.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
     EXPECT_EQ(result, true);
 }
 
@@ -476,6 +503,26 @@ TEST(turbo_composer, range_constraint)
     EXPECT_EQ(result, true);
 }
 
+TEST(turbo_composer, range_constraint_fail)
+{
+    waffle::TurboComposer composer = waffle::TurboComposer();
+
+    uint64_t value = 0xffffff;
+    uint32_t witness_index = composer.add_variable(fr(value));
+
+    composer.create_range_constraint(witness_index, 23);
+
+    waffle::TurboProver prover = composer.create_prover();
+
+    waffle::TurboVerifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, false);
+}
+
 TEST(turbo_composer, and_constraint)
 {
     waffle::TurboComposer composer = waffle::TurboComposer();
@@ -659,4 +706,73 @@ TEST(turbo_composer, big_add_gate_with_bit_extract)
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
+}
+
+TEST(turbo_composer, validate_copy_constraints)
+{
+    for (size_t m = 0; m < 2; ++m) {
+        for (size_t k = 0; k < 4; ++k) {
+            for (size_t j = 0; j < 4; ++j) {
+                if (m == 0 && (j > 0 || k > 0)) {
+                    continue;
+                }
+                waffle::TurboComposer composer = waffle::TurboComposer();
+
+                barretenberg::fr variables[4]{
+                    barretenberg::fr::random_element(),
+                    barretenberg::fr::random_element(),
+                    barretenberg::fr::random_element(),
+                    barretenberg::fr::random_element(),
+                };
+
+                uint32_t indices[4]{
+                    composer.add_variable(variables[0]),
+                    composer.add_variable(variables[1]),
+                    composer.add_variable(variables[2]),
+                    composer.add_variable(variables[3]),
+                };
+
+                for (size_t i = 0; i < 4; ++i) {
+                    composer.create_big_add_gate({
+                        indices[0],
+                        indices[1],
+                        indices[2],
+                        indices[3],
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                    });
+
+                    composer.create_big_add_gate({
+                        indices[3],
+                        indices[2],
+                        indices[1],
+                        indices[0],
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                        barretenberg::fr(0),
+                    });
+                }
+
+                waffle::TurboProver prover = composer.create_prover();
+
+                if (m > 0) {
+                    prover.witness->wires.at("w_" + std::to_string(k + 1))[j] = barretenberg::fr::random_element();
+                }
+
+                waffle::TurboVerifier verifier = composer.create_verifier();
+
+                waffle::plonk_proof proof = prover.construct_proof();
+
+                bool result = verifier.verify_proof(proof);
+
+                bool expected = (m == 0);
+                EXPECT_EQ(result, expected);
+            }
+        }
+    }
 }

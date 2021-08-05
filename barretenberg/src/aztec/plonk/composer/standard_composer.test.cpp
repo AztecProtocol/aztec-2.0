@@ -11,7 +11,7 @@ TEST(standard_composer, test_add_gate_proofs)
 {
     waffle::StandardComposer composer = waffle::StandardComposer();
     fr a = fr::one();
-    uint32_t a_idx  = composer.add_public_variable(a);
+    uint32_t a_idx = composer.add_public_variable(a);
     fr b = fr::one();
     fr c = a + b;
     fr d = a + c;
@@ -186,6 +186,26 @@ TEST(standard_composer, range_constraint)
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
+}
+
+TEST(standard_composer, range_constraint_fail)
+{
+    waffle::StandardComposer composer = waffle::StandardComposer();
+
+    uint64_t value = 0xffffff;
+    uint32_t witness_index = composer.add_variable(fr(value));
+
+    composer.create_range_constraint(witness_index, 23);
+
+    waffle::Prover prover = composer.create_prover();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, false);
 }
 
 TEST(standard_composer, and_constraint)
@@ -415,4 +435,21 @@ TEST(standard_composer, test_unrolled_composer)
     bool result = verifier.verify_proof(proof);
 
     EXPECT_EQ(result, true);
+}
+
+TEST(standard_composer, test_range_constraint_fail)
+{
+    waffle::StandardComposer composer = waffle::StandardComposer();
+    uint32_t witness_index = composer.add_variable(fr::neg_one());
+    composer.create_range_constraint(witness_index, 32);
+
+    waffle::Prover prover = composer.preprocess();
+
+    waffle::Verifier verifier = composer.create_verifier();
+
+    waffle::plonk_proof proof = prover.construct_proof();
+
+    bool result = verifier.verify_proof(proof);
+
+    EXPECT_EQ(result, false);
 }

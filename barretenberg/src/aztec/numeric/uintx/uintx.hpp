@@ -14,8 +14,9 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
-
 #include "../uint256/uint256.hpp"
+
+namespace numeric {
 
 template <class base_uint> class uintx {
   public:
@@ -153,6 +154,23 @@ template <class base_uint> class uintx {
     constexpr std::pair<uintx, uintx> divmod(const uintx& b) const;
 };
 
+template <typename B, typename Params> inline void read(B& it, uintx<Params>& value)
+{
+    using serialize::read;
+    Params a;
+    Params b;
+    read(it, b);
+    read(it, a);
+    value = uintx<Params>(a, b);
+}
+
+template <typename B, typename Params> inline void write(B& it, uintx<Params> const& value)
+{
+    using serialize::write;
+    write(it, value.hi);
+    write(it, value.lo);
+}
+
 #include "./uintx_impl.hpp"
 
 template <class base_uint> inline std::ostream& operator<<(std::ostream& os, uintx<base_uint> const& a)
@@ -163,3 +181,8 @@ template <class base_uint> inline std::ostream& operator<<(std::ostream& os, uin
 
 typedef uintx<uint256_t> uint512_t;
 typedef uintx<uint512_t> uint1024_t;
+
+} // namespace numeric
+
+using numeric::uint1024_t;
+using numeric::uint512_t;

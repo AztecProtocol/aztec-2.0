@@ -1,10 +1,11 @@
+#include <plonk/proof_system/constants.hpp>
 #include "./verifier.hpp"
 #include "../public_inputs/public_inputs.hpp"
 #include "../utils/linearizer.hpp"
+#include "../utils/kate_verification.hpp"
 #include <ecc/curves/bn254/fq12.hpp>
 #include <ecc/curves/bn254/pairing.hpp>
 #include <ecc/curves/bn254/scalar_multiplication/scalar_multiplication.hpp>
-#include <plonk/transcript/transcript_wrappers.hpp>
 #include <polynomials/polynomial_arithmetic.hpp>
 
 using namespace barretenberg;
@@ -21,6 +22,7 @@ template <typename program_settings>
 VerifierBase<program_settings>::VerifierBase(VerifierBase&& other)
     : manifest(other.manifest)
     , key(other.key)
+    , commitment_scheme(std::move(other.commitment_scheme))
 {}
 
 template <typename program_settings>
@@ -28,74 +30,39 @@ VerifierBase<program_settings>& VerifierBase<program_settings>::operator=(Verifi
 {
     key = other.key;
     manifest = other.manifest;
-
+    commitment_scheme = (std::move(other.commitment_scheme));
+    kate_g1_elements.clear();
+    kate_fr_elements.clear();
     return *this;
+}
+
+template <typename program_settings> bool VerifierBase<program_settings>::validate_commitments()
+{
+    // TODO
+    return true;
+}
+
+template <typename program_settings> bool VerifierBase<program_settings>::validate_scalars()
+{
+    // TODO
+    return true;
 }
 
 template <typename program_settings> bool VerifierBase<program_settings>::verify_proof(const waffle::plonk_proof& proof)
 {
+    // This function verifies a PLONK proof for given program settings.
+    // A PLONK proof for standard PLONK with linearisation as on page 31 in the paper is of the form:
+    //
+    // π_SNARK =   { [a]_1,[b]_1,[c]_1,[z]_1,[t_{low}]_1,[t_{mid}]_1,[t_{high}]_1,[W_z]_1,[W_zω]_1 \in G,
+    //              a_eval, b_eval, c_eval, sigma1_eval, sigma2_eval, r_eval, z_eval_omega \in F }
+    //
+    // Proof π_SNARK must be first added in the transcrip with other program settings.
+    //
     key->program_width = program_settings::program_width;
     transcript::StandardTranscript transcript = transcript::StandardTranscript(
         proof.proof_data, manifest, program_settings::hash_type, program_settings::num_challenge_bytes);
 
-    std::array<g1::affine_element, program_settings::program_width> T;
-    std::array<g1::affine_element, program_settings::program_width> W;
-
-    constexpr size_t num_sigma_evaluations =
-        (program_settings::use_linearisation ? program_settings::program_width - 1 : program_settings::program_width);
-
-    std::array<fr, program_settings::program_width> wire_evaluations;
-    std::array<fr, num_sigma_evaluations> sigma_evaluations;
-
-    for (size_t i = 0; i < program_settings::program_width; ++i) {
-        std::string index = std::to_string(i + 1);
-        T[i] = g1::affine_element::serialize_from_buffer(&transcript.get_element("T_" + index)[0]);
-        W[i] = g1::affine_element::serialize_from_buffer(&transcript.get_element("W_" + index)[0]);
-        wire_evaluations[i] = fr::serialize_from_buffer(&transcript.get_element("w_" + index)[0]);
-    }
-    for (size_t i = 0; i < num_sigma_evaluations; ++i) {
-        std::string index = std::to_string(i + 1);
-        sigma_evaluations[i] = fr::serialize_from_buffer(&transcript.get_element("sigma_" + index)[0]);
-    }
-    g1::affine_element Z_1 = g1::affine_element::serialize_from_buffer(&transcript.get_element("Z")[0]);
-    g1::affine_element PI_Z = g1::affine_element::serialize_from_buffer(&transcript.get_element("PI_Z")[0]);
-    g1::affine_element PI_Z_OMEGA = g1::affine_element::serialize_from_buffer(&transcript.get_element("PI_Z_OMEGA")[0]);
-
-    bool inputs_valid = T[0].on_curve() && Z_1.on_curve() && PI_Z.on_curve();
-
-    if (!inputs_valid) {
-        printf("inputs not valid!\n");
-        printf("T[0] on curve: %u \n", T[0].on_curve() ? 1 : 0);
-        printf("Z_1 on curve: %u \n", Z_1.on_curve() ? 1 : 0);
-        printf("PI_Z on curve: %u \n", PI_Z.on_curve() ? 1 : 0);
-        return false;
-    }
-
-    bool instance_valid = true;
-    for (size_t i = 0; i < program_settings::program_width; ++i) {
-        instance_valid =
-            instance_valid &&
-            key->permutation_selectors.at("SIGMA_" + std::to_string(i + 1)).on_curve(); // SIGMA[i].on_curve();
-    }
-    if (!instance_valid) {
-        printf("instance not valid!\n");
-        return false;
-    }
-
-    bool field_elements_valid = true;
-    for (size_t i = 0; i < program_settings::program_width - 1; ++i) {
-        field_elements_valid = field_elements_valid && !(sigma_evaluations[i] == fr::zero());
-    }
-    if constexpr (program_settings::use_linearisation) {
-        fr linear_eval = fr::serialize_from_buffer(&transcript.get_element("r")[0]);
-        field_elements_valid = field_elements_valid && !(linear_eval == fr::zero());
-    }
-
-    if (!field_elements_valid) {
-        printf("proof field elements not valid!\n");
-        return false;
-    }
-
+    // Compute challenges using Fiat-Shamir heuristic from transcript
     transcript.add_element("circuit_size",
                            { static_cast<uint8_t>(key->n >> 24),
                              static_cast<uint8_t>(key->n >> 16),
@@ -107,129 +74,153 @@ template <typename program_settings> bool VerifierBase<program_settings>::verify
                              static_cast<uint8_t>(key->num_public_inputs >> 8),
                              static_cast<uint8_t>(key->num_public_inputs) });
     transcript.apply_fiat_shamir("init");
+    transcript.apply_fiat_shamir("eta");
     transcript.apply_fiat_shamir("beta");
     transcript.apply_fiat_shamir("alpha");
     transcript.apply_fiat_shamir("z");
 
-    fr alpha = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
-    fr z_challenge = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
+    const auto alpha = fr::serialize_from_buffer(transcript.get_challenge("alpha").begin());
+    const auto zeta = fr::serialize_from_buffer(transcript.get_challenge("z").begin());
 
-    fr t_eval = fr::zero();
+    // Compute the evaluations of the lagrange polynomials L_1(X) and L_{n - k}(X) at X = zeta.
+    // Here k = num_roots_cut_out_of_the_vanishing_polynomial and n is the size of the evaluation domain.
+    const auto lagrange_evals = barretenberg::polynomial_arithmetic::get_lagrange_evaluations(zeta, key->domain);
 
-    barretenberg::polynomial_arithmetic::lagrange_evaluations lagrange_evals =
-        barretenberg::polynomial_arithmetic::get_lagrange_evaluations(z_challenge, key->domain);
-
-    fr alpha_base = alpha;
-    alpha_base = program_settings::compute_quotient_evaluation_contribution(key.get(), alpha_base, transcript, t_eval);
-
-    fr T0 = lagrange_evals.vanishing_poly.invert();
-    t_eval *= T0;
-
+    // Step 8: Compute quotient polynomial evaluation at zeta
+    //           r_eval − ((a_eval + β.sigma1_eval + γ)(b_eval + β.sigma2_eval + γ)(c_eval + γ) z_eval_omega)α −
+    //           L_1(zeta).α^{3} + (z_eval_omega - ∆_{PI}).L_{n-k}(zeta)α^{2}
+    // t_eval =
+    // --------------------------------------------------------------------------------------------------------------------------------------------------------------
+    //                                                                       Z_H*(zeta)
+    // where Z_H*(X) is the modified vanishing polynomial.
+    // The `compute_quotient_evaluation_contribution` function computes the numerator of t_eval
+    // according to the program settings for standard/turbo/ultra PLONK.
+    //
+    key->z_pow_n = zeta;
+    for (size_t i = 0; i < key->domain.log2_size; ++i) {
+        key->z_pow_n *= key->z_pow_n;
+    }
+    fr t_eval(0);
+    program_settings::compute_quotient_evaluation_contribution(key.get(), alpha, transcript, t_eval);
+    t_eval *= lagrange_evals.vanishing_poly.invert();
     transcript.add_element("t", t_eval.to_buffer());
 
     transcript.apply_fiat_shamir("nu");
     transcript.apply_fiat_shamir("separator");
+    const auto separator_challenge = fr::serialize_from_buffer(transcript.get_challenge("separator").begin());
 
-    fr u = fr::serialize_from_buffer(transcript.get_challenge("separator").begin());
+    // In the following function, we do the following computation.
+    // Step 10: Compute batch opening commitment [F]_1
+    //          [F]  :=  [t_{low}]_1 + \zeta^{n}.[tmid]1 + \zeta^{2n}.[t_{high}]_1
+    //                   + [D]_1 + \nu_{a}.[a]_1 + \nu_{b}.[b]_1 + \nu_{c}.[c]_1
+    //                   + \nu_{\sigma1}.[s_{\sigma_1}]1 + \nu_{\sigma2}.[s_{\sigma_2}]1
+    //
+    // We do not compute [D]_1 term in this method as the information required to compute [D]_1
+    // in inadequate as far as this KateCommitmentScheme class is concerned.
+    //
+    // Step 11: Compute batch evaluation commitment [E]_1
+    //          [E]_1  :=  (t_eval + \nu_{r}.r_eval + \nu_{a}.a_eval + \nu_{b}.b_eval
+    //                      \nu_{c}.c_eval + \nu_{\sigma1}.sigma1_eval + \nu_{\sigma2}.sigma2_eval +
+    //                      nu_z_omega.separator.z_eval_omega) . [1]_1
+    //
+    // Note that we do not actually compute the scalar multiplications but just accumulate the scalars
+    // and the group elements in different vectors.
+    //
+    commitment_scheme->batch_verify(transcript, kate_g1_elements, kate_fr_elements, key);
 
-    fr batch_evaluation = t_eval;
+    // Step 9: Compute partial opening batch commitment [D]_1:
+    //         [D]_1 = (a_eval.b_eval.[qM]_1 + a_eval.[qL]_1 + b_eval.[qR]_1 + c_eval.[qO]_1 + [qC]_1) * nu_{linear} * α
+    //         >> selector polynomials
+    //                  + [(a_eval + β.z + γ)(b_eval + β.k_1.z + γ)(c_eval + β.k_2.z + γ).α +
+    //                  L_1(z).α^{3}].nu_{linear}.[z]_1 >> grand product perm polynomial
+    //                  - (a_eval + β.sigma1_eval + γ)(b_eval + β.sigma2_eval +
+    //                  γ)α.β.nu_{linear}.z_omega_eval.[sigma3]_1     >> last perm polynomial
+    //
+    // Again, we dont actually compute the MSMs and just accumulate scalars and group elements and postpone MSM to last
+    // step.
+    //
+    program_settings::append_scalar_multiplication_inputs(key.get(), alpha, transcript, kate_fr_elements);
 
-    fr linear_challenge(0);
-    if (program_settings::use_linearisation) {
-        linear_challenge = fr::serialize_from_buffer(transcript.get_challenge_from_map("nu", "r").begin());
-    }
+    // Fetch the group elements [W_z]_1,[W_zω]_1 from the transcript
+    g1::affine_element PI_Z = g1::affine_element::serialize_from_buffer(&transcript.get_element("PI_Z")[0]);
+    g1::affine_element PI_Z_OMEGA = g1::affine_element::serialize_from_buffer(&transcript.get_element("PI_Z_OMEGA")[0]);
 
-    if constexpr (program_settings::use_linearisation) {
-        fr linear_eval = fr::serialize_from_buffer(&transcript.get_element("r")[0]);
-        T0 = linear_challenge * linear_eval;
-        batch_evaluation += T0;
-    }
+    // Accumulate pairs of scalars and group elements which would be used in the final pairing check.
+    kate_g1_elements.insert({ "PI_Z_OMEGA", PI_Z_OMEGA });
+    kate_fr_elements.insert({ "PI_Z_OMEGA", zeta * key->domain.root * separator_challenge });
 
-    for (size_t i = 0; i < program_settings::program_width; ++i) {
-        const std::string wire_key = "w_" + std::to_string(i + 1);
-        fr wire_challenge = fr::serialize_from_buffer(transcript.get_challenge_from_map("nu", wire_key).begin());
-        T0 = wire_challenge * wire_evaluations[i];
-        batch_evaluation += T0;
-    }
+    kate_g1_elements.insert({ "PI_Z", PI_Z });
+    kate_fr_elements.insert({ "PI_Z", zeta });
 
-    for (size_t i = 0; i < program_settings::program_width; ++i) {
-        if (program_settings::requires_shifted_wire(program_settings::wire_shift_settings, i)) {
-            const std::string wire_key = "w_" + std::to_string(i + 1) + "_omega";
-            fr wire_challenge =
-                fr::serialize_from_buffer(&transcript.get_challenge_from_map("nu", "w_" + std::to_string(i + 1))[0]);
-            fr wire_shifted_eval = fr::serialize_from_buffer(&transcript.get_element(wire_key)[0]);
-            T0 = wire_shifted_eval * wire_challenge;
-            T0 *= u;
-            batch_evaluation += T0;
-        }
-    }
-
-    program_settings::compute_batch_evaluation_contribution(key.get(), batch_evaluation, transcript);
-
-    batch_evaluation.self_neg();
-
-    fr z_omega_scalar;
-    z_omega_scalar = z_challenge * key->domain.root;
-    z_omega_scalar *= u;
+    validate_commitments();
+    validate_scalars();
 
     std::vector<fr> scalars;
     std::vector<g1::affine_element> elements;
 
-    for (size_t i = 0; i < program_settings::program_width; ++i) {
-        const std::string wire_key = "w_" + std::to_string(i + 1);
-        if (W[i].on_curve()) {
-            elements.emplace_back(W[i]);
-            fr wire_challenge = fr::serialize_from_buffer(&transcript.get_challenge_from_map("nu", wire_key)[0]);
-            if (program_settings::requires_shifted_wire(program_settings::wire_shift_settings, i)) {
-                T0 = wire_challenge * u;
-                T0 += wire_challenge;
-                scalars.emplace_back(T0);
-            } else {
-                scalars.emplace_back(wire_challenge);
-            }
+    for (const auto& [key, value] : kate_g1_elements) {
+        if (value.on_curve()) {
+            scalars.emplace_back(kate_fr_elements.at(key));
+            elements.emplace_back(value);
         }
     }
 
-    elements.emplace_back(g1::affine_one);
-    scalars.emplace_back(batch_evaluation);
-
-    // if (PI_Z_OMEGA.on_curve()) {
-    elements.emplace_back(PI_Z_OMEGA);
-    scalars.emplace_back(z_omega_scalar);
-    // }
-
-    elements.emplace_back(PI_Z);
-    scalars.emplace_back(z_challenge);
-
-    for (size_t i = 1; i < program_settings::program_width; ++i) {
-        fr z_power = z_challenge.pow(static_cast<uint64_t>(key->n * i));
-        if (T[i].on_curve()) {
-            elements.emplace_back(T[i]);
-            scalars.emplace_back(z_power);
-        }
-    }
-
-    program_settings::append_scalar_multiplication_inputs(key.get(), alpha, transcript, elements, scalars);
     size_t num_elements = elements.size();
     elements.resize(num_elements * 2);
     barretenberg::scalar_multiplication::generate_pippenger_point_table(&elements[0], &elements[0], num_elements);
     scalar_multiplication::pippenger_runtime_state state(num_elements);
+
     g1::element P[2];
 
-    P[0] = g1::affine_element(g1::element(PI_Z_OMEGA) * u);
-    P[1] = barretenberg::scalar_multiplication::pippenger(&scalars[0], &elements[0], num_elements, state);
+    P[0] = barretenberg::scalar_multiplication::pippenger(&scalars[0], &elements[0], num_elements, state);
+    P[1] = -(g1::element(PI_Z_OMEGA) * separator_challenge + PI_Z);
 
-    P[1] += T[0];
-    P[0] += PI_Z;
-    P[0] = -P[0];
+    if (key->contains_recursive_proof) {
+        ASSERT(key->recursive_proof_public_input_indices.size() == 16);
+        const auto& inputs = transcript.get_field_element_vector("public_inputs");
+        const auto recover_fq_from_public_inputs =
+            [&inputs](const size_t idx0, const size_t idx1, const size_t idx2, const size_t idx3) {
+                const uint256_t l0 = inputs[idx0];
+                const uint256_t l1 = inputs[idx1];
+                const uint256_t l2 = inputs[idx2];
+                const uint256_t l3 = inputs[idx3];
+
+                const uint256_t limb = l0 + (l1 << NUM_LIMB_BITS_IN_FIELD_SIMULATION) +
+                                       (l2 << (NUM_LIMB_BITS_IN_FIELD_SIMULATION * 2)) +
+                                       (l3 << (NUM_LIMB_BITS_IN_FIELD_SIMULATION * 3));
+                return barretenberg::fq(limb);
+            };
+
+        const auto recursion_separator_challenge = transcript.get_challenge_field_element("separator").sqr();
+
+        const auto x0 = recover_fq_from_public_inputs(key->recursive_proof_public_input_indices[0],
+                                                      key->recursive_proof_public_input_indices[1],
+                                                      key->recursive_proof_public_input_indices[2],
+                                                      key->recursive_proof_public_input_indices[3]);
+        const auto y0 = recover_fq_from_public_inputs(key->recursive_proof_public_input_indices[4],
+                                                      key->recursive_proof_public_input_indices[5],
+                                                      key->recursive_proof_public_input_indices[6],
+                                                      key->recursive_proof_public_input_indices[7]);
+        const auto x1 = recover_fq_from_public_inputs(key->recursive_proof_public_input_indices[8],
+                                                      key->recursive_proof_public_input_indices[9],
+                                                      key->recursive_proof_public_input_indices[10],
+                                                      key->recursive_proof_public_input_indices[11]);
+        const auto y1 = recover_fq_from_public_inputs(key->recursive_proof_public_input_indices[12],
+                                                      key->recursive_proof_public_input_indices[13],
+                                                      key->recursive_proof_public_input_indices[14],
+                                                      key->recursive_proof_public_input_indices[15]);
+        P[0] += g1::element(x0, y0, 1) * recursion_separator_challenge;
+        P[1] += g1::element(x1, y1, 1) * recursion_separator_challenge;
+    }
+
     g1::element::batch_normalize(P, 2);
 
-    g1::affine_element P_affine[2];
-    barretenberg::fq::__copy(P[0].x, P_affine[1].x);
-    barretenberg::fq::__copy(P[0].y, P_affine[1].y);
-    barretenberg::fq::__copy(P[1].x, P_affine[0].x);
-    barretenberg::fq::__copy(P[1].y, P_affine[0].y);
+    g1::affine_element P_affine[2]{
+        { P[0].x, P[0].y },
+        { P[1].x, P[1].y },
+    };
 
+    // The final pairing check of step 12.
     barretenberg::fq12 result = barretenberg::pairing::reduced_ate_pairing_batch_precomputed(
         P_affine, key->reference_string->get_precomputed_g2_lines(), 2);
 
