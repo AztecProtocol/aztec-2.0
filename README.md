@@ -11,4 +11,4 @@ The Aztec 2.0 system consists of the following sub projects.
 # Bugs fixed:
    https://medium.com/aztec-protocol/vulnerabilities-found-in-aztec-2-0-9b80c8bf416c
    
-   https://medium.com/p/54dff729a24f/edit
+https://medium.com/@jaosef/54dff729a24f
