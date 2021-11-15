@@ -149,7 +149,7 @@ void create_ecdsa_verify_constraints(waffle::TurboComposer& composer, const Ecds
     auto pub_key = stdlib::secp256k::g1(pub_key_x_fq, pub_key_y_fq);
 
     stdlib::bool_t<waffle::TurboComposer> signature_result = stdlib::ecdsa::
-        verify_signature_hash<waffle::TurboComposer, stdlib::secp256k::fq, stdlib::secp256k::fr, stdlib::secp256k::g1>(
+        verify_signature<waffle::TurboComposer, stdlib::secp256k::fq, stdlib::secp256k::fr, stdlib::secp256k::g1>(
             message, pub_key, sig);
 
     auto result_bool = composer.add_variable(signature_result.get_value() == true);
