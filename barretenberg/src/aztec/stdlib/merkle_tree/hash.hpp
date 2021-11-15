@@ -36,6 +36,18 @@ inline barretenberg::fr hash_value_native(std::vector<uint8_t> const& input, con
     return barretenberg::fr::serialize_from_buffer(output.data());
 }
 
+// Hash to field function that is exposed to Noi
+// It does not use Pedersen as we want a hash function which can
+// be used as a random oracle.
+template <typename ComposerContext>
+inline field_t<ComposerContext> hash_to_field(byte_array<ComposerContext> const& input)
+{
+    ASSERT(input.get_context() != nullptr);
+
+    const auto result = static_cast<field_t<ComposerContext>>(stdlib::blake2s(input));
+    return result;
+}
+
 inline barretenberg::fr compress_native(barretenberg::fr const& lhs, barretenberg::fr const& rhs)
 {
     return crypto::pedersen::compress_native(lhs, rhs);

@@ -35,6 +35,13 @@ void ComposerBase::assert_equal(const uint32_t a_variable_idx, const uint32_t b_
         variable_tags[a_real_idx] = variable_tags[b_real_idx];
 }
 
+// Copies the value of a_variable_idx into b_variable_idx
+// Can be seen as us replacing all occurences of b_variable_idx with a_variable_idx
+void ComposerBase::copy_from_to(const uint32_t a_variable_idx, const uint32_t b_variable_idx)
+{
+    assert_equal(a_variable_idx, b_variable_idx, "");
+}
+
 template <size_t program_width> void ComposerBase::compute_wire_copy_cycles()
 {
     const uint32_t num_public_inputs = static_cast<uint32_t>(public_inputs.size());

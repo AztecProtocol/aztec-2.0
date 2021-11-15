@@ -67,6 +67,21 @@ struct poly_triple {
     barretenberg::fr q_c;
 };
 
+inline bool operator==(poly_triple const& lhs, poly_triple const& rhs)
+{
+    // clang-format off
+    return
+        lhs.a == rhs.a &&
+        lhs.b == rhs.b &&
+        lhs.c == rhs.c &&
+        lhs.q_m == rhs.q_m &&
+        lhs.q_l == rhs.q_l &&
+        lhs.q_r == rhs.q_r &&
+        lhs.q_o == rhs.q_o &&
+        lhs.q_c == rhs.q_c;
+    // clang-format on
+}
+
 struct fixed_group_add_quad {
     uint32_t a;
     uint32_t b;
@@ -294,6 +309,7 @@ class ComposerBase {
     }
 
     virtual void assert_equal(const uint32_t a_idx, const uint32_t b_idx, std::string const& msg = "assert_equal");
+    virtual void copy_from_to(const uint32_t from_idx, const uint32_t to_idx);
 
     template <size_t program_width> void compute_wire_copy_cycles();
     template <size_t program_width, bool with_tags = false> void compute_sigma_permutations(proving_key* key);
