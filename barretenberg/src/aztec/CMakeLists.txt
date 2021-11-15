@@ -31,6 +31,7 @@ add_subdirectory(crypto)
 add_subdirectory(polynomials)
 add_subdirectory(plonk)
 add_subdirectory(stdlib)
+add_subdirectory(dsl)
 add_subdirectory(noir)
 add_subdirectory(rollup)
 
@@ -64,6 +65,8 @@ if(WASM)
         $<TARGET_OBJECTS:stdlib_schnorr_objects>
         $<TARGET_OBJECTS:stdlib_pedersen_objects>
         $<TARGET_OBJECTS:stdlib_blake2s_objects>
+        $<TARGET_OBJECTS:stdlib_sha256_objects>
+        $<TARGET_OBJECTS:dsl_objects>
         $<TARGET_OBJECTS:rollup_proofs_objects>
     )
 
