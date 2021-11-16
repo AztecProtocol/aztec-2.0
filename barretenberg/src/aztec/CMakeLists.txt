@@ -72,7 +72,7 @@ if(WASM)
     target_link_options(
         barretenberg.wasm
         PRIVATE
-        -nostartfiles -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--allow-undefined -Wl,--stack-first -Wl,-z,stack-size=8388608
+        -nostartfiles -Wl,--no-entry -Wl,--export-dynamic -Wl,--allow-undefined -Wl,--stack-first -Wl,-z,stack-size=8388608
     )
 
 endif()
