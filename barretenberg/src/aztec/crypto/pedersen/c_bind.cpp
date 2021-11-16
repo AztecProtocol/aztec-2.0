@@ -5,7 +5,16 @@
 
 extern "C" {
 
-WASM_EXPORT void pedersen__compress_fields(uint8_t const* left, uint8_t const* right, uint8_t* result)
+WASM_EXPORT void pedersen_encrypt(uint8_t const* inputs_buffer, uint8_t* output)
+{
+    std::vector<grumpkin::fq> to_compress;
+    read(inputs_buffer, to_compress);
+    grumpkin::g1::affine_element pedersen_hash = crypto::pedersen::encrypt_native(to_compress);
+
+    write(output, pedersen_hash);
+}
+
+WASM_EXPORT void pedersen_compress_fields(uint8_t const* left, uint8_t const* right, uint8_t* result)
 {
     auto lhs = barretenberg::fr::serialize_from_buffer(left);
     auto rhs = barretenberg::fr::serialize_from_buffer(right);
@@ -13,7 +22,7 @@ WASM_EXPORT void pedersen__compress_fields(uint8_t const* left, uint8_t const* r
     barretenberg::fr::serialize_to_buffer(r, result);
 }
 
-WASM_EXPORT void pedersen__compress(uint8_t const* inputs_buffer, uint8_t* output)
+WASM_EXPORT void pedersen_compress(uint8_t const* inputs_buffer, uint8_t* output)
 {
     std::vector<grumpkin::fq> to_compress;
     read(inputs_buffer, to_compress);
@@ -21,7 +30,7 @@ WASM_EXPORT void pedersen__compress(uint8_t const* inputs_buffer, uint8_t* outpu
     barretenberg::fr::serialize_to_buffer(r, output);
 }
 
-WASM_EXPORT void pedersen__compress_with_hash_index(uint8_t const* inputs_buffer, uint8_t* output, uint32_t hash_index)
+WASM_EXPORT void pedersen_compress_with_hash_index(uint8_t const* inputs_buffer, uint8_t* output, uint32_t hash_index)
 {
     std::vector<grumpkin::fq> to_compress;
     read(inputs_buffer, to_compress);
@@ -29,7 +38,7 @@ WASM_EXPORT void pedersen__compress_with_hash_index(uint8_t const* inputs_buffer
     barretenberg::fr::serialize_to_buffer(r, output);
 }
 
-WASM_EXPORT void pedersen__buffer_to_field(uint8_t const* data, size_t length, uint8_t* r)
+WASM_EXPORT void pedersen_buffer_to_field(uint8_t const* data, size_t length, uint8_t* r)
 {
     std::vector<uint8_t> to_compress(data, data + length);
 
@@ -38,11 +47,9 @@ WASM_EXPORT void pedersen__buffer_to_field(uint8_t const* data, size_t length, u
     barretenberg::fr::serialize_to_buffer(result, r);
 }
 
-/**
- * Given a buffer containing 64 byte leaves, return a new buffer containing the leaf hashes and all pairs of nodes that
- * define a merkle tree.
- */
-WASM_EXPORT size_t pedersen__hash_values_to_tree(uint8_t const* data, size_t length, uint8_t** output)
+// Given a buffer containing 64 byte leaves, return a new buffer containing the leaf hashes and all pairs of nodes that
+// define a merkle tree.
+WASM_EXPORT size_t pedersen_hash_to_tree(uint8_t const* data, size_t length, uint8_t** output)
 {
     auto num_leaves = length / 64;
     std::vector<std::vector<uint8_t>> results;
