@@ -142,7 +142,7 @@ Engine& get_engine()
     if (!init) {
         init = true;
     } else {
-        // ASSERT(engine.is_debug = false); //TODO check why it fails
+        ASSERT(engine.is_debug = false);
     }
     engine.is_debug = false;
     return engine;

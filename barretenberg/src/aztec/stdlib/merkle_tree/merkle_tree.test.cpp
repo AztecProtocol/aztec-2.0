@@ -11,7 +11,6 @@ using namespace barretenberg;
 using namespace plonk::stdlib::merkle_tree;
 
 namespace {
-auto& engine = numeric::random::get_debug_engine();
 auto& random_engine = numeric::random::get_engine();
 } // namespace
 
