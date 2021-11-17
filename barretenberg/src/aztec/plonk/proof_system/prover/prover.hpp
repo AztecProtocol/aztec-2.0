@@ -103,7 +103,9 @@ extern template class ProverBase<turbo_settings>;
 
 typedef ProverBase<unrolled_standard_settings> UnrolledProver;
 typedef ProverBase<unrolled_turbo_settings> UnrolledTurboProver;
+typedef ProverBase<unrolled_turbo_settings> UnrolledGenPermProver;
 typedef ProverBase<standard_settings> Prover;
 typedef ProverBase<turbo_settings> TurboProver;
+typedef ProverBase<turbo_settings> GenPermProver;
 
 } // namespace waffle

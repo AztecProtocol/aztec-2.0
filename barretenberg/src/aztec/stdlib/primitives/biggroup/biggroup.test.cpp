@@ -96,6 +96,7 @@ stdlib::bn254::fr convert_inputs(waffle::TurboComposer* ctx, const barretenberg:
 
     return x;
 }
+
 stdlib::secp256r::g1 convert_inputs_secp256r1(waffle::TurboComposer* ctx, const secp256r1::g1::affine_element& input)
 {
     uint256_t x_u256(input.x);

@@ -245,8 +245,10 @@ template point<waffle::TurboComposer> variable_base_mul<waffle::TurboComposer>(c
 template bool verify_signature<waffle::TurboComposer>(const byte_array<waffle::TurboComposer>&,
                                                       const point<waffle::TurboComposer>&,
                                                       const signature_bits<waffle::TurboComposer>&);
+
 template signature_bits<waffle::TurboComposer> convert_signature<waffle::TurboComposer>(
     waffle::TurboComposer*, const crypto::schnorr::signature&);
+
 template bit_array<waffle::TurboComposer> convert_message<waffle::TurboComposer>(waffle::TurboComposer*,
                                                                                  const std::string&);
 } // namespace schnorr

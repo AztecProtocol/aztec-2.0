@@ -447,6 +447,7 @@ field_t<C> pedersen<C>::compress(const field_t& in_left,
                                  const bool handle_edge_cases,
                                  const bool validate_input_is_in_field)
 {
+
     std::vector<point> accumulators;
     accumulators.push_back(hash_single(in_left, hash_index, handle_edge_cases, validate_input_is_in_field));
     accumulators.push_back(hash_single(in_right, hash_index + 1, handle_edge_cases, validate_input_is_in_field));
@@ -462,6 +463,7 @@ field_t<C> pedersen<C>::compress(const field_t& in_left,
 template <typename C>
 point<C> pedersen<C>::encrypt(const std::vector<field_t>& inputs, const size_t hash_index, const bool handle_edge_cases)
 {
+
     std::vector<point> to_accumulate;
     for (size_t i = 0; i < inputs.size(); ++i) {
         to_accumulate.push_back(hash_single(inputs[i].normalize(), hash_index + i, handle_edge_cases));

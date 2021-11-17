@@ -1,2 +1,0 @@
-add_subdirectory(transcript)
-add_subdirectory(verifier)
