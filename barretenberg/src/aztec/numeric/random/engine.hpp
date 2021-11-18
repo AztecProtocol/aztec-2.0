@@ -1,4 +1,5 @@
 #pragma once
+#include <assert.h>
 #include "../uint128/uint128.hpp"
 #include "../uint256/uint256.hpp"
 #include "../uintx/uintx.hpp"

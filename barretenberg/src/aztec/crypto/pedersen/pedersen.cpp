@@ -1,7 +1,7 @@
 #include "./pedersen.hpp"
 #include <common/throw_or_abort.hpp>
 #include <iostream>
-
+#include <mutex>
 #ifndef NO_MULTITHREADING
 #include <omp.h>
 #endif
@@ -33,7 +33,7 @@ static std::array<grumpkin::g1::affine_element, num_generators> generators;
 static std::vector<std::array<fixed_base_ladder, quad_length>> ladders;
 static std::vector<std::array<fixed_base_ladder, quad_length>> hash_ladders;
 static std::array<fixed_base_ladder, quad_length> g1_ladder;
-static bool inited = false;
+std::once_flag init_flag;
 
 /**
  * Precompute ladders and hash ladders
@@ -106,7 +106,6 @@ const auto init = []() {
 
     compute_fixed_base_ladder(grumpkin::g1::one, &g1_ladder[0]);
 
-    inited = true;
     return 1;
 };
 } // namespace
@@ -173,9 +172,7 @@ void compute_fixed_base_ladder(const grumpkin::g1::affine_element& generator, fi
 const fixed_base_ladder* get_ladder_internal(std::array<fixed_base_ladder, quad_length> const& ladder,
                                              const size_t num_bits)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     // find n, such that 2n + 1 >= num_bits
     size_t n;
     if (num_bits == 0) {
@@ -192,17 +189,13 @@ const fixed_base_ladder* get_ladder_internal(std::array<fixed_base_ladder, quad_
 
 const fixed_base_ladder* get_g1_ladder(const size_t num_bits)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     return get_ladder_internal(g1_ladder, num_bits);
 }
 
 const fixed_base_ladder* get_ladder(const size_t generator_index, const size_t num_bits)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     if (generator_index >= num_generators) {
         throw_or_abort(format("Generator index out of range: ", generator_index));
     }
@@ -211,9 +204,7 @@ const fixed_base_ladder* get_ladder(const size_t generator_index, const size_t n
 
 const fixed_base_ladder* get_hash_ladder(const size_t generator_index, const size_t num_bits)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     if (generator_index >= num_generators) {
         throw_or_abort(format("Generator index out of range: ", generator_index));
     }
@@ -222,9 +213,7 @@ const fixed_base_ladder* get_hash_ladder(const size_t generator_index, const siz
 
 grumpkin::g1::affine_element get_generator(const size_t generator_index)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     if (generator_index >= num_generators) {
         throw_or_abort(format("Generator index out of range: ", generator_index));
     }
@@ -274,9 +263,7 @@ grumpkin::g1::element hash_single(const barretenberg::fr& in, const size_t hash_
 
 grumpkin::fq compress_native(const grumpkin::fq& left, const grumpkin::fq& right, const size_t hash_index)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
 #ifndef NO_MULTITHREADING
     grumpkin::fq in[2] = { left, right };
     grumpkin::g1::element out[2];
@@ -302,9 +289,7 @@ grumpkin::fq compress_native(const grumpkin::fq& left, const grumpkin::fq& right
 grumpkin::g1::affine_element encrypt_native(const std::vector<grumpkin::fq>& inputs, const size_t hash_index)
 {
     std::vector<grumpkin::g1::element> out(inputs.size());
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
 #ifndef NO_MULTITHREADING
 #pragma omp parallel for num_threads(inputs.size())
 #endif
@@ -382,9 +367,7 @@ grumpkin::g1::affine_element compress_to_point_native(const grumpkin::fq& left,
                                                       const grumpkin::fq& right,
                                                       const size_t hash_index)
 {
-    if (!inited) {
-        init();
-    }
+    std::call_once(init_flag, init);
     grumpkin::g1::element first = hash_single(left, hash_index);
     grumpkin::g1::element second = hash_single(right, hash_index + 1);
     first = first + second;

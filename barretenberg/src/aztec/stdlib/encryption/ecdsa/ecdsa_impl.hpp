@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../hash/sha256/sha256.hpp"
+#include "../../hash/blake2s/blake2s.hpp"
 #include "../../primitives/bit_array/bit_array.hpp"
 namespace plonk {
 namespace stdlib {

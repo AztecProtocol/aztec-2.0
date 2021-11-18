@@ -31,6 +31,7 @@ add_subdirectory(crypto)
 add_subdirectory(polynomials)
 add_subdirectory(plonk)
 add_subdirectory(stdlib)
+add_subdirectory(dsl)
 add_subdirectory(rollup)
 
 if(BENCHMARKS)
@@ -63,13 +64,15 @@ if(WASM)
         $<TARGET_OBJECTS:stdlib_schnorr_objects>
         $<TARGET_OBJECTS:stdlib_pedersen_objects>
         $<TARGET_OBJECTS:stdlib_blake2s_objects>
+        $<TARGET_OBJECTS:stdlib_sha256_objects>
+        $<TARGET_OBJECTS:dsl_objects>
         $<TARGET_OBJECTS:rollup_proofs_objects>
     )
 
     target_link_options(
         barretenberg.wasm
         PRIVATE
-        -nostartfiles -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--allow-undefined -Wl,--stack-first -Wl,-z,stack-size=8388608
+        -nostartfiles -Wl,--no-entry -Wl,--export-dynamic -Wl,--import-memory -Wl,--import-memory -Wl,--allow-undefined -Wl,--stack-first -Wl,-z,stack-size=8388608
     )
 
 endif()

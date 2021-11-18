@@ -10,7 +10,7 @@ WASM_EXPORT void* bbmalloc(size_t size);
 
 WASM_EXPORT void bbfree(void* ptr);
 
-WASM_EXPORT void* new_pippenger(uint8_t* points, size_t num_points);
+WASM_EXPORT void* new_pippenger(const uint8_t* points, size_t num_points);
 
 WASM_EXPORT void delete_pippenger(void* pippenger);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <assert.h>
 #include <crypto/schnorr/schnorr.hpp>
 #include "../../primitives/field/field.hpp"
 #include "../../primitives/bool/bool.hpp"
