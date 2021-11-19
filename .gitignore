@@ -8,3 +8,5 @@ barretenberg/srs_db/ignition
 **/node_modules
 yarn.lock
 *.log
+barretenberg_wrapper/target*
+barretenberg_wrapper/Cargo.lock 
