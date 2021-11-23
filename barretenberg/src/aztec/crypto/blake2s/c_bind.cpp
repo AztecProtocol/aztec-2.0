@@ -1,5 +1,6 @@
 #include "blake2s.hpp"
 #include <ecc/curves/bn254/fr.hpp>
+#include <common/log.hpp>
 
 #define WASM_EXPORT __attribute__((visibility("default")))
 

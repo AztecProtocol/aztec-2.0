@@ -1,9 +1,8 @@
 extern crate hex;
 
-//use crate::bindings;
 use crate::bindings::blake2s;
 
-pub fn hash_to_field(/*&mut self,*/ input: &[u8]) -> [u8; 32] {
+pub fn hash_to_field(input: &[u8]) -> [u8; 32] {
     let mut r = [0_u8; 32];
     let data = input.as_ptr() as *const u8;
     unsafe {

@@ -1,6 +1,3 @@
-//#include "pedersen.hpp"
-//#include <common/serialize.hpp>
-//#include <common/mem.hpp>
 #include <stdint.h>
 #include <stddef.h>
 

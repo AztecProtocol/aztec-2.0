@@ -86,9 +86,7 @@ mod tests {
             let mut many_intputs: Vec<[u8; 32]> = Vec::new();
             many_intputs.push(test.input_left);
             many_intputs.push(test.input_right);
-            //test.input_left.to_vec().extend(test.input_right);
             let got_many = compress_many(&many_intputs);
-            //let got_many = compress_many(vec![test.input_left, test.input_right]);
             assert_eq!(hex::encode(got), test.expected_hex);
             assert_eq!(got, got_many);
         }

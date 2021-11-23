@@ -1,6 +1,6 @@
 #include <stdint.h>
 #include <stddef.h>
-//#include <vector>
+
 #define WASM_EXPORT __attribute__((visibility("default")))
 
 extern "C" {

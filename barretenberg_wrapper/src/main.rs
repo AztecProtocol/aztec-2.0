@@ -1,4 +1,3 @@
-//extern crate barretenberg_wrapper;
 use barretenberg_wrapper::blake2s;
 use barretenberg_wrapper::pedersen;
 
