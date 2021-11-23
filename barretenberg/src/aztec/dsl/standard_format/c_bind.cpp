@@ -189,48 +189,57 @@ WASM_EXPORT void composer__delete_prover(void* prover)
 WASM_EXPORT bool composer__verify_proof(
     void* pippenger, uint8_t const* g2x, uint8_t const* constraint_system_buf, uint8_t* proof, uint32_t length)
 {
+    bool verified = false;
+#ifndef __wasm__
+    try {
+#endif
 
-    auto t1 = Clock::now();
-    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
-    auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
-        reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
-    auto composer = create_circuit(constraint_system, std::move(crs_factory));
-    auto t2 = Clock::now();
+        auto t1 = Clock::now();
+        auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
+        auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
+            reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
+        auto composer = create_circuit(constraint_system, std::move(crs_factory));
+        auto t2 = Clock::now();
 
-    logstr(format("verifier deserialise : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count(),
-                  "seconds")
-               .c_str());
+        logstr(format("verifier deserialise : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count(),
+                      "seconds")
+                   .c_str());
 
-    waffle::plonk_proof pp = { std::vector<uint8_t>(proof, proof + length) };
+        waffle::plonk_proof pp = { std::vector<uint8_t>(proof, proof + length) };
 
-    auto t3 = Clock::now();
-    auto verifier = composer.create_verifier();
-    auto t4 = Clock::now();
+        auto t3 = Clock::now();
+        auto verifier = composer.create_verifier();
+        auto t4 = Clock::now();
 
-    logstr(format("creating verifier : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t4 - t3).count(),
-                  "seconds")
-               .c_str());
+        logstr(format("creating verifier : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t4 - t3).count(),
+                      "seconds")
+                   .c_str());
 
-    auto t5 = Clock::now();
-    auto verified = verifier.verify_proof(pp);
-    auto t6 = Clock::now();
+        auto t5 = Clock::now();
+        verified = verifier.verify_proof(pp);
+        auto t6 = Clock::now();
 
-    logstr(format("verifying proof : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t6 - t5).count(),
-                  "seconds")
-               .c_str());
-
+        logstr(format("verifying proof : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t6 - t5).count(),
+                      "seconds")
+                   .c_str());
+#ifndef __wasm__
+    } catch (const std::exception& e) {
+        verified = false;
+        error(e.what());
+    }
+#endif
     return verified;
 }
 
@@ -241,50 +250,59 @@ WASM_EXPORT bool composer__verify_proof_with_public_inputs(void* pippenger,
                                                            uint8_t* proof,
                                                            uint32_t length)
 {
-    auto t1 = Clock::now();
-    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
-    auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
-        reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
-    auto composer = create_circuit(constraint_system, std::move(crs_factory));
-    auto t2 = Clock::now();
-    logstr(format("verifier deserialise : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count(),
-                  "seconds")
-               .c_str());
+    bool verified = false;
+#ifndef __wasm__
+    try {
+#endif
+        auto t1 = Clock::now();
+        auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
+        auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
+            reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
+        auto composer = create_circuit(constraint_system, std::move(crs_factory));
+        auto t2 = Clock::now();
+        logstr(format("verifier deserialise : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t2 - t1).count(),
+                      "seconds")
+                   .c_str());
 
-    waffle::plonk_proof pp = { std::vector<uint8_t>(proof, proof + length) };
+        waffle::plonk_proof pp = { std::vector<uint8_t>(proof, proof + length) };
 
-    auto t3 = Clock::now();
-    // XXX: Seems we cannot pass the public inputs to the verifie
-    // auto public_inputs = from_buffer<std::vector<fr>>(public_inputs_buf);
+        auto t3 = Clock::now();
+        // XXX: Seems we cannot pass the public inputs to the verifie
+        // auto public_inputs = from_buffer<std::vector<fr>>(public_inputs_buf);
 
-    auto verifier = composer.create_verifier();
+        auto verifier = composer.create_verifier();
 
-    auto t4 = Clock::now();
+        auto t4 = Clock::now();
 
-    logstr(format("creating verifier : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t4 - t3).count(),
-                  "seconds")
-               .c_str());
+        logstr(format("creating verifier : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t4 - t3).count(),
+                      "seconds")
+                   .c_str());
 
-    auto t5 = Clock::now();
-    auto verified = verifier.verify_proof(pp);
-    auto t6 = Clock::now();
+        auto t5 = Clock::now();
+        verified = verifier.verify_proof(pp);
+        auto t6 = Clock::now();
 
-    logstr(format("verifying proof : ",
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count(),
-                  "ns",
-                  " ~",
-                  std::chrono::duration_cast<std::chrono::seconds>(t6 - t5).count(),
-                  "seconds")
-               .c_str());
-
+        logstr(format("verifying proof : ",
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count(),
+                      "ns",
+                      " ~",
+                      std::chrono::duration_cast<std::chrono::seconds>(t6 - t5).count(),
+                      "seconds")
+                   .c_str());
+#ifndef __wasm__
+    } catch (const std::exception& e) {
+        verified = false;
+        error(e.what());
+    }
+#endif
     return verified;
 }
 }

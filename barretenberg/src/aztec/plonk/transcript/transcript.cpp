@@ -2,6 +2,7 @@
 #include <array>
 #include <common/assert.hpp>
 #include <common/net.hpp>
+#include <common/throw_or_abort.hpp>
 #include <crypto/blake2s/blake2s.hpp>
 #include <crypto/keccak/keccak.hpp>
 #include <crypto/pedersen/pedersen.hpp>
@@ -48,9 +49,23 @@ Transcript::Transcript(const std::vector<uint8_t>& input_transcript,
     , hasher(hash_type)
     , manifest(input_manifest)
 {
+    current_challenge.data = {};
     const size_t num_rounds = input_manifest.get_num_rounds();
     const uint8_t* buffer = &input_transcript[0];
     size_t count = 0;
+    // Compute how much data we need according to the manifest
+    size_t totalRequiredSize = 0;
+    for (size_t i = 0; i < num_rounds; ++i) {
+        for (auto manifest_element : input_manifest.get_round_manifest(i).elements) {
+            if (!manifest_element.derived_by_verifier) {
+                totalRequiredSize += manifest_element.num_bytes;
+            }
+        }
+    }
+    // Check that we have enough.
+    if (totalRequiredSize != input_transcript.size())
+        throw_or_abort("Serialized transcript vector does not match the vector");
+
     for (size_t i = 0; i < num_rounds; ++i) {
         for (auto manifest_element : input_manifest.get_round_manifest(i).elements) {
             if (!manifest_element.derived_by_verifier) {
