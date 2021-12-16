@@ -1,0 +1,11 @@
+{
+  "extends": ".",
+  "compilerOptions": {
+    "module": "es6",
+    "outDir": "dest-es",
+    "types": []
+  },
+  "include": ["src"],
+  "exclude": ["**/*.test.*"],
+  "files": []
+}

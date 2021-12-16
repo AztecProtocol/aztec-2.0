@@ -1,0 +1,79 @@
+{
+  "name": "blockchain",
+  "version": "0.0.0",
+  "main": "index.js",
+  "license": "GPLv2",
+  "private": true,
+  "scripts": {
+    "build": "yarn clean && yarn compile && tsc -p tsconfig.cjs.json && tsc -p tsconfig.es.json && node ./package.js && chmod +x ./dest/deploy/index.js",
+    "build:dev": "tsc -p tsconfig.cjs.json --watch & tsc -p tsconfig.es.json --watch",
+    "compile": "node ./ensure_versions && yarn hardhat compile",
+    "clean": "rm -rf ./cache ./dest ./dest-es",
+    "test": "yarn test:src && yarn test:contract",
+    "test:contract": "node ./ensure_versions && hardhat test ./test/**/*.test.ts",
+    "test:verifier": "hardhat test ./test/verifier/verifier.test.ts",
+    "test:src": "jest",
+    "test:ganache": "yarn hardhat --network ganache test",
+    "deploy": "node ./dest/deploy/index.js",
+    "start:ganache": "yarn compile && ganache-cli -d -h 0.0.0.0 --chainId=1337 -l 12000000 -e 10000 -m 'test test test test test test test test test test test junk'",
+    "start:hardhat": "hardhat node"
+  },
+  "bin": {
+    "deploy_rollup_processor": "./deploy/index.js",
+    "add_asset": "./deploy/add_asset/index.js"
+  },
+  "jest": {
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "testRegex": ".*\\.test\\.(tsx?|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "json",
+      "node"
+    ],
+    "rootDir": "./src"
+  },
+  "dependencies": {
+    "@ethersproject/experimental": "^5.5.0",
+    "@nomiclabs/hardhat-etherscan": "^2.1.7",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "barretenberg": "../barretenberg.js/dest",
+    "bigint-buffer": "^1.1.5",
+    "debug": "^4.1.1",
+    "dotenv": "^8.2.0",
+    "ethers": "5.5.1",
+    "typescript": "^3.5.3"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^3.3.0",
+    "@types/debug": "^4.1.5",
+    "@types/jest": "^26.0.15",
+    "@types/mocha": "^8.0.3",
+    "@typescript-eslint/eslint-plugin": "^4.1.1",
+    "@typescript-eslint/parser": "^4.1.1",
+    "chai": "^4.2.0",
+    "crypto": "^1.0.1",
+    "eslint": "^7.9.0",
+    "eslint-config-prettier": "^6.11.0",
+    "ethereum-waffle": "3.0.0",
+    "ethereumjs-util": "^7.0.7",
+    "hardhat": "^2.6.8",
+    "jest": "^26.6.1",
+    "prettier": "^2.2.1",
+    "prettier-plugin-solidity": "^1.0.0-beta.3",
+    "sinon": "^9.0.2",
+    "ts-jest": "^26.4.2",
+    "ts-node": "^8.9.1",
+    "tsc-watch": "^2.2.1"
+  },
+  "resolutions": {
+    "ethers": "5.5.1"
+  }
+}
