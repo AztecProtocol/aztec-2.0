@@ -40,7 +40,7 @@ fn main() {
         "cargo:rustc-link-search={}/build/src/aztec/dsl",
         dst.display()
     );
-    println!("cargo:rustc-link-search=/usr/lib/llvm-10/lib");
+    println!("cargo:rustc-link-search=/usr/local/opt/llvm/lib");
     println!(
         "cargo:rustc-link-search={}/build/src/aztec/plonk/transcript",
         dst.display()
@@ -108,5 +108,5 @@ fn main() {
     println!("cargo:rustc-link-lib=static=keccak");
     println!("cargo:rustc-link-lib=static=env");
     println!("cargo:rustc-link-lib=omp");
-    println!("cargo:rustc-link-lib=stdc++");
+    println!("cargo:rustc-link-lib=c++");
 }
