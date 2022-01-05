@@ -15,7 +15,7 @@
 function(barretenberg_module MODULE_NAME)
     file(GLOB_RECURSE SOURCE_FILES *.cpp)
     file(GLOB_RECURSE HEADER_FILES *.hpp)
-    list(FILTER SOURCE_FILES EXCLUDE REGEX ".*\.(test|bench).cpp$")
+    list(FILTER SOURCE_FILES EXCLUDE REGEX ".*\.(test).cpp$")
 
     if(SOURCE_FILES)
         add_library(
@@ -89,37 +89,5 @@ function(barretenberg_module MODULE_NAME)
         endif()
     endif()
 
-    file(GLOB_RECURSE BENCH_SOURCE_FILES *.bench.cpp)
-    if(BENCHMARKS AND BENCH_SOURCE_FILES)
-        add_library(
-            ${MODULE_NAME}_bench_objects
-            OBJECT
-            ${BENCH_SOURCE_FILES}
-        )
 
-        target_link_libraries(
-            ${MODULE_NAME}_bench_objects
-            PRIVATE
-            benchmark
-        )
-
-        add_executable(
-            ${MODULE_NAME}_bench
-            $<TARGET_OBJECTS:${MODULE_NAME}_bench_objects>
-        )
-
-        target_link_libraries(
-            ${MODULE_NAME}_bench
-            PRIVATE
-            ${MODULE_LINK_NAME}
-            ${ARGN}
-            benchmark
-        )
-
-        add_custom_target(
-            run_${MODULE_NAME}_bench
-            COMMAND ${MODULE_NAME}_bench
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        )
-    endif()
 endfunction()
