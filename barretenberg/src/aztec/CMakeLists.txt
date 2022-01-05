@@ -34,9 +34,6 @@ add_subdirectory(stdlib)
 add_subdirectory(dsl)
 add_subdirectory(rollup)
 
-if(BENCHMARKS)
-    add_subdirectory(plonk_bench)
-endif()
 
 if(WASM)
     # Well, this is awkward. We can't build a wasm module by just linking to the libraries as that produces, nothing.
