@@ -39,55 +39,5 @@ function(barretenberg_module MODULE_NAME)
         set(MODULE_LINK_NAME ${MODULE_NAME})
     endif()
 
-    file(GLOB_RECURSE TEST_SOURCE_FILES *.test.cpp)
-    if(TESTING AND TEST_SOURCE_FILES)
-        add_library(
-            ${MODULE_NAME}_test_objects
-            OBJECT
-            ${TEST_SOURCE_FILES}
-        )
-
-        target_link_libraries(
-            ${MODULE_NAME}_test_objects
-            PRIVATE
-            gtest
-        )
-
-        add_executable(
-            ${MODULE_NAME}_tests
-            $<TARGET_OBJECTS:${MODULE_NAME}_test_objects>
-        )
-
-        if(WASM)
-            target_link_options(
-                ${MODULE_NAME}_tests
-                PRIVATE
-                -Wl,-z,stack-size=8388608
-            )
-        endif()
-
-        if(DISABLE_HEAVY_TESTS)
-            target_compile_definitions(
-                ${MODULE_NAME}_test_objects
-                PRIVATE
-                -DDISABLE_HEAVY_TESTS=1
-            )
-        endif()
-
-        target_link_libraries(
-            ${MODULE_NAME}_tests
-            PRIVATE
-            ${MODULE_LINK_NAME}
-            ${ARGN}
-            gtest
-            gtest_main
-        )
-
-        if(NOT WASM)
-            # Currently haven't found a way to easily wrap the calls in wasmtime when run from ctest.
-            gtest_discover_tests(${MODULE_NAME}_tests WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-        endif()
-    endif()
-
 
 endfunction()
