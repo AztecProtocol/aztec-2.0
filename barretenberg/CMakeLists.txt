@@ -42,7 +42,6 @@ include(GNUInstallDirs)
 include(cmake/arch.cmake)
 include(cmake/threading.cmake)
 include(cmake/gtest.cmake)
-include(cmake/benchmark.cmake)
 include(cmake/build.cmake)
 include(cmake/module.cmake)
 
