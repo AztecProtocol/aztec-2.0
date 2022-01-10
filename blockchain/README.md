@@ -8,5 +8,3 @@ The syntax is in many cases similar to Truffle/web3.js, but checkout <a href="ht
  
 To setup the package for local development, run the `bootstrap.sh` script from the root of the package.
 
-## Warning
-Do not put secret information in the `.env.example` file. It is an example showing what 
