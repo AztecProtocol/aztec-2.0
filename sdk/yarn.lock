@@ -3150,7 +3150,7 @@ block-stream@*:
     "@nomiclabs/hardhat-etherscan" "^2.1.7"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-blockchain-0.0.0-27c6d94d-ee7c-48dd-af01-e77058a7b342-1636717669805/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
     debug "^4.1.1"
     dotenv "^8.2.0"
@@ -9212,9 +9212,9 @@ srcset@^3.0.0:
   version "1.0.0"
   dependencies:
     "@koa/cors" "^3.0.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
-    blockchain "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/blockchain/dest-es"
+    blockchain "file:../blockchain/dest-es"
     ethers "5.0.29"
     fs-extra "9.0.1"
     koa "^2.7.0"
@@ -9644,9 +9644,9 @@ tiny-inflate@^1.0.0:
     esm "^3.2.25"
 
 tmpl@1.0.x:
-  version "1.0.4"
-  resolved "https://registry.yarnpkg.com/tmpl/-/tmpl-1.0.4.tgz#23640dd7b42d00433911140820e5cf440e521dd1"
-  integrity sha1-I2QN17QtAEM5ERQIIOXPRA5SHdE=
+  version "1.0.5"
+  resolved "https://registry.yarnpkg.com/tmpl/-/tmpl-1.0.5.tgz#8683e0b902bb9c20c4f726e3c0b69f36518c07cc"
+  integrity sha512-3f0uOEAQwIqGuWW2MVzYg8fV/QNnc/IpuJNG837rLuczAaLVHslWHZQj4IGiEl5Hs3kkbhwL9Ab7Hrsmuj+Smw==
 
 to-arraybuffer@^1.0.0:
   version "1.0.1"
