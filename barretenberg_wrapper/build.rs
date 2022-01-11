@@ -3,8 +3,8 @@ extern crate cmake;
 fn main() {
     // Builds the project in ../barretenberg into dst
     let dst = cmake::Config::new("../barretenberg")
-        .define("CMAKE_C_COMPILER", "clang")
-        .define("CMAKE_CXX_COMPILER", "clang++")
+        .define("DCMAKE_C_COMPILER", "clang")
+        .define("DCMAKE_CXX_COMPILER", "clang++")
         .build();
     //println!("cargo:warning={}", dst.display());
 
