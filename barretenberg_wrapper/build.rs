@@ -2,8 +2,8 @@ extern crate cmake;
 
 fn main() {
     // Builds the project in ../barretenberg into dst
-    let dst = cmake::Config::new("../barretenberg");
-    let dst = if cfg!(target_os = "macos") && cfg!(target_arch = "arm") {
+    let mut dst = cmake::Config::new("../barretenberg");
+    dst = if cfg!(target_os = "macos") && cfg!(target_arch = "arm") {
         dst
         .define("CMAKE_C_COMPILER", "/opt/homebrew/opt/llvm/bin/clang")
         .define("CMAKE_CXX_COMPILER", "/opt/homebrew/opt/llvm/bin/clang++")
