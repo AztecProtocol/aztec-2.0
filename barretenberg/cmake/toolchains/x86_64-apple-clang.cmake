@@ -1,2 +1,2 @@
-set(CMAKE_CXX_COMPILER "/usr/local/opt/llvm/bin/clang++")
-set(CMAKE_C_COMPILER "/usr/local/opt/llvm/bin/clang")
+set(CMAKE_CXX_COMPILER "clang++")
+set(CMAKE_C_COMPILER "clang")
