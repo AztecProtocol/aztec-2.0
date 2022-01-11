@@ -15,6 +15,10 @@ option(DISABLE_ADX "Disable ADX assembly variant" OFF)
 option(MULTITHREADING "Enable multi-threading" ON)
 option(PROFILING "Build profiling" ON)
 
+if(APPLE)
+    set(DISABLE_ASM ON)
+endif()
+
 if(ARM)
     message(STATUS "Compiling for ARM.")
     set(DISABLE_ASM ON)
