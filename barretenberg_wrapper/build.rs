@@ -41,7 +41,14 @@ fn main() {
         dst.display()
     );
     if cfg!(target_os = "macos") {
-        println!("cargo:rustc-link-search=/usr/local/opt/llvm/lib");
+        if cfg!(target_arch = "arm")
+        {
+            println!("cargo:rustc-link-search=/opt/homebrew/opt/llvm/lib");
+        }
+        else
+        {
+            println!("cargo:rustc-link-search=/usr/local/opt/llvm/lib");
+        }
     } else {
         println!("cargo:rustc-link-search=/usr/lib/llvm-10/lib");
     }
