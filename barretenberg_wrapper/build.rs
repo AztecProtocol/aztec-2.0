@@ -2,10 +2,19 @@ extern crate cmake;
 
 fn main() {
     // Builds the project in ../barretenberg into dst
-    let dst = cmake::Config::new("../barretenberg")
-        .define("CMAKE_C_COMPILER", "clang")
-        .define("CMAKE_CXX_COMPILER", "clang++")
-        .build();
+    let dst = cmake::Config::new("../barretenberg");
+    let dst = if cfg!(target_os = "macos") && cfg!(target_arch = "arm") {
+        dst
+        .define("CMAKE_C_COMPILER", "/opt/homebrew/opt/llvm/bin/clang")
+        .define("CMAKE_CXX_COMPILER", "/opt/homebrew/opt/llvm/bin/clang++")
+    }
+    else
+    {
+        dst
+        .define("CMAKE_C_COMPILER", "/usr/local/opt/llvm/bin/clang")
+        .define("CMAKE_CXX_COMPILER", "/usr/local/opt/llvm/bin/clang++")
+    }.build();
+
     //println!("cargo:warning={}", dst.display());
 
     println!(
