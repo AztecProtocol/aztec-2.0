@@ -5,6 +5,9 @@ fn main() {
     let dst = cmake::Config::new("../barretenberg")
         .define("DCMAKE_C_COMPILER", "clang")
         .define("DCMAKE_CXX_COMPILER", "clang++")
+        // compile with debug mode because clang13 does not compile in release mode
+        // with google benchmarks
+        .profile("Debug")
         .build();
     //println!("cargo:warning={}", dst.display());
 
