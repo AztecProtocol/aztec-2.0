@@ -2,13 +2,18 @@ extern crate cmake;
 
 fn main() {
     // Builds the project in ../barretenberg into dst
-    let dst = cmake::Config::new("../barretenberg")
-        .define("DCMAKE_C_COMPILER", "clang")
-        .define("DCMAKE_CXX_COMPILER", "clang++")
-        // compile with debug mode because clang13 does not compile in release mode
-        // with google benchmarks
-        .profile("Debug")
-        .build();
+    // compile with debug mode because clang13 does not compile in release mode
+    // with google benchmarks
+    let mut config = cmake::Config::new("../barretenberg");
+    config.profile("Debug");
+
+    // barretenberg currently requires manually specifying whether we're
+    // compiling for an apple m1 or not, so we attempt to detect it here.
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        config.define("APPLE_M1", "1");
+    }
+
+    let dst = config.build();
     //println!("cargo:warning={}", dst.display());
 
     println!(
