@@ -40,6 +40,14 @@ Just run the bootstrap script.
 ./bootstrap.sh
 ```
 
+N.B. FOR M1 MACS RUN THE FOLLOWING:
+
+```
+./bootstrap.sh APPLE_M1
+```
+
+The current build for M1 macs disables multithreading, which will affect performance.
+
 ### Parallelise the build
 
 Make sure your MAKEFLAGS environment variable is set to run jobs equal to number of cores. e.g. `MAKEFLAGS=-j32`.
