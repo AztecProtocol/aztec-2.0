@@ -2115,7 +2115,7 @@ block-stream@*:
     "@nomiclabs/hardhat-etherscan" "^2.1.7"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-blockchain-0.0.0-5c0f3fed-373e-4e91-8763-1ae7ada796ca-1636717648596/barretenberg.js/dest"
+    barretenberg "file:../barretenberg.js/dest"
     bigint-buffer "^1.1.5"
     debug "^4.1.1"
     dotenv "^8.2.0"
@@ -3665,8 +3665,8 @@ growly@^1.3.0:
 "halloumi@file:../halloumi/dest":
   version "1.0.0"
   dependencies:
-    barretenberg "file:../../.cache/yarn/v6/npm-halloumi-1.0.0-e44faab8-bea5-4118-92b9-bdcfff4848ee-1636717653732/barretenberg.js/dest"
-    blockchain "file:../../.cache/yarn/v6/npm-halloumi-1.0.0-e44faab8-bea5-4118-92b9-bdcfff4848ee-1636717653732/blockchain/dest"
+    barretenberg "file:../barretenberg.js/dest"
+    blockchain "file:../blockchain/dest"
     fs-extra "9.0.1"
     koa "^2.7.0"
     koa-router "^7.4.0"
@@ -6985,9 +6985,9 @@ uri-js@^4.2.2:
     punycode "^2.1.0"
 
 urijs@^1.19.0:
-  version "1.19.6"
-  resolved "https://registry.yarnpkg.com/urijs/-/urijs-1.19.6.tgz#51f8cb17ca16faefb20b9a31ac60f84aa2b7c870"
-  integrity sha512-eSXsXZ2jLvGWeLYlQA3Gh36BcjF+0amo92+wHPyN1mdR8Nxf75fuEuYTd9c0a+m/vhCjRK0ESlE9YNLW+E1VEw==
+  version "1.19.9"
+  resolved "https://registry.yarnpkg.com/urijs/-/urijs-1.19.9.tgz#3b15844835de3732866d420768c16f24be7d3e65"
+  integrity sha512-v0V+v5F3NQFt6TX0GpA2NKyrpythDJI+PHRo66sUIDP/U6cXbm6NqLVcXylQGwiwW5VYNj+OAei3EU0ALj9AWg==
 
 urix@^0.1.0:
   version "0.1.0"
