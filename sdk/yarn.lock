@@ -3150,7 +3150,7 @@ block-stream@*:
     "@nomiclabs/hardhat-etherscan" "^2.1.7"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-blockchain-0.0.0-27c6d94d-ee7c-48dd-af01-e77058a7b342-1636717669805/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
     debug "^4.1.1"
     dotenv "^8.2.0"
@@ -9212,9 +9212,9 @@ srcset@^3.0.0:
   version "1.0.0"
   dependencies:
     "@koa/cors" "^3.0.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
-    blockchain "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/blockchain/dest-es"
+    blockchain "file:../blockchain/dest-es"
     ethers "5.0.29"
     fs-extra "9.0.1"
     koa "^2.7.0"
@@ -10027,9 +10027,9 @@ uri-js@^4.2.2:
     punycode "^2.1.0"
 
 urijs@^1.19.0:
-  version "1.19.6"
-  resolved "https://registry.yarnpkg.com/urijs/-/urijs-1.19.6.tgz#51f8cb17ca16faefb20b9a31ac60f84aa2b7c870"
-  integrity sha512-eSXsXZ2jLvGWeLYlQA3Gh36BcjF+0amo92+wHPyN1mdR8Nxf75fuEuYTd9c0a+m/vhCjRK0ESlE9YNLW+E1VEw==
+  version "1.19.11"
+  resolved "https://registry.yarnpkg.com/urijs/-/urijs-1.19.11.tgz#204b0d6b605ae80bea54bea39280cdb7c9f923cc"
+  integrity sha512-HXgFDgDommxn5/bIv0cnQZsPhHDA90NPHD6+c/v21U5+Sx5hoP8+dP9IZXBU1gIfvdRfhG8cel9QNPeionfcCQ==
 
 urix@^0.1.0:
   version "0.1.0"
