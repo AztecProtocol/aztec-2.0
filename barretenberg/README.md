@@ -30,6 +30,7 @@ export LD_LIBRARY_PATH="/usr/local/clang_9.0.0/lib:$LD_LIBRARY_PATH"
 ```
 brew install cmake
 brew install llvm
+brew instal libomp
 ```
 
 ### Getting started
@@ -47,6 +48,15 @@ N.B. FOR M1 MACS RUN THE FOLLOWING:
 ```
 
 The current build for M1 macs disables multithreading, which will affect performance.
+
+FOR MACS STILL RUNNING INTEL CHIPS:
+
+```
+./bootstrap.sh APPLE_INTEL
+```
+
+The benchmarking libraries need to be disabled to build the wasm on Macs. The `BENCHMARKS` flag is set to `OFF` and `include(cmake/benchmark.cmake)` is removed inside barrenteberg `CMakeLists.txt`. This will also
+not include the directory `decrypt_bench` in `barrentenberg/src/aztec/rollup/CMakeLists.txt`and `pippenger_bench` in `barrentenberg/src/aztec/plonk/CMakeLists.txt`.
 
 ### Parallelise the build
 
