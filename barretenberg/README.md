@@ -30,7 +30,7 @@ export LD_LIBRARY_PATH="/usr/local/clang_9.0.0/lib:$LD_LIBRARY_PATH"
 ```
 brew install cmake
 brew install llvm
-brew instal libomp
+brew install libomp
 ```
 
 ### Getting started
