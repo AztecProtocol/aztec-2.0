@@ -17,12 +17,18 @@ if [ ! -d ./srs_db/ignition ]; then
 fi
 
 appleM1="APPLE_M1"
+appleIntel="APPLE_INTEL"
 input=${1:foo}
 
 # Build native.
 if [ "$input" == "$appleM1" ]; then
 mkdir -p build && cd build
 cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ .. -DAPPLE_M1=1
+cmake --build . --parallel
+cd ..
+elif [ "$input" == "$appleIntel" ]; then
+mkdir -p build && cd build
+cmake -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ .. -DAPPLE_INTEL=1
 cmake --build . --parallel
 cd ..
 else
