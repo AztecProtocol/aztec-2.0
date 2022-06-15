@@ -1,3 +1,7 @@
+## THE UPATED PUBLIC REPO IS HERE:
+https://github.com/AztecProtocol/aztec-connect
+
+
 # AZTEC 2.0 Monorepo
 
 The Aztec 2.0 system consists of the following sub projects.
