@@ -7,4 +7,7 @@ if(NOT WASM)
 endif()
 
 add_subdirectory(proofs)
-add_subdirectory(decrypt_bench)
+
+if (NOT APPLE_INTEL)
+  add_subdirectory(decrypt_bench)
+endif()
