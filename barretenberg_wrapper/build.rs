@@ -119,11 +119,10 @@ fn main() {
     println!("cargo:rustc-link-lib=static=pedersen");
     println!("cargo:rustc-link-lib=static=keccak");
     println!("cargo:rustc-link-lib=static=env");
+    println!("cargo:rustc-link-lib=omp");
     if cfg!(target_os = "macos") {
-        println!("cargo:rustc-link-lib=omp");
         println!("cargo:rustc-link-lib=c++");
     } else {
-        println!("cargo:rustc-link-lib=libomp");
         println!("cargo:rustc-link-lib=stdc++");
     }
 }
