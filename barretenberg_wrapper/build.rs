@@ -5,7 +5,7 @@ fn main() {
     // compile with debug mode because clang13 does not compile in release mode
     // with google benchmarks
     let mut config = cmake::Config::new("../barretenberg");
-    config.profile("Debug");
+    // config.profile("Debug");
 
     // barretenberg currently requires manually specifying whether we're
     // compiling for an apple m1 or not, so we attempt to detect it here.
