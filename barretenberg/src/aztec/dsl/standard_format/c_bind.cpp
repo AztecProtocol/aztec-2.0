@@ -8,6 +8,8 @@
 #include <chrono>
 #include <plonk/proof_system/types/polynomial_manifest.hpp>
 #include <plonk/proof_system/commitment_scheme/kate_commitment_scheme.hpp>
+#include <plonk/proof_system/proving_key/serialize.hpp>
+
 typedef std::chrono::high_resolution_clock Clock;
 
 #define WASM_EXPORT __attribute__((visibility("default")))
@@ -18,7 +20,65 @@ using namespace std;
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
+namespace generic_proving_key {
+static std::shared_ptr<waffle::proving_key> proving_key;
+static std::shared_ptr<waffle::verification_key> verification_key;
+
+void init_proving_key(uint8_t const* constraint_system_buf)
+{
+    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
+    auto crs_factory = std::make_unique<waffle::ReferenceStringFactory>();
+    auto composer = create_circuit(constraint_system, std::move(crs_factory));
+    proving_key = composer.compute_proving_key();
+}
+
+TurboProver new_generic_prover(standard_format constraint_system, std::vector<fr> witness)
+{
+    TurboComposer composer(proving_key, nullptr);
+
+    create_circuit_with_witness(composer, constraint_system, witness);
+
+    if (composer.failed) {
+        error("composer logic failed: ", composer.err);
+    }
+
+    return composer.create_prover();
+}
+
+std::shared_ptr<waffle::proving_key> get_proving_key()
+{
+    return proving_key;
+}
+
+} // namespace generic_proving_key
+
+using namespace generic_proving_key;
+
 extern "C" {
+WASM_EXPORT void composer__compute_proving_key(uint8_t const* constraint_system_buf)
+{
+    init_proving_key(constraint_system_buf);
+}
+
+WASM_EXPORT uint32_t composer__get_new_proving_key_data(uint8_t** output)
+{
+    // Copied from joint_split
+    // Computing the size of the serialized key is non trivial. We know it's ~331mb.
+    // Allocate a buffer large enough to hold it, and abort if we overflow.
+    // This is to keep memory usage down.
+    size_t total_buf_len = 350 * 1024 * 1024;
+    auto raw_buf = (uint8_t*)malloc(total_buf_len);
+    auto raw_buf_end = raw_buf;
+    write(raw_buf_end, *get_proving_key());
+    *output = raw_buf;
+    auto len = static_cast<uint32_t>(raw_buf_end - raw_buf);
+    if (len > total_buf_len) {
+        info("Buffer overflow serializing proving key.");
+        std::abort();
+    }
+    return len;
+}
+
 WASM_EXPORT uint32_t composer__get_circuit_size(uint8_t const* constraint_system_buf)
 {
     auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
@@ -70,6 +130,16 @@ WASM_EXPORT uint32_t composer__smart_contract(void* pippenger,
     return static_cast<uint32_t>(buffer.size());
 }
 
+WASM_EXPORT void* composer__new_generic_prover(uint8_t const* constraint_system_buf, uint8_t const* witness_buf)
+{
+    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
+    auto witness = from_buffer<std::vector<fr>>(witness_buf);
+
+    auto prover = new_generic_prover(constraint_system, witness);
+    auto heapProver = new TurboProver(std::move(prover));
+
+    return heapProver;
+}
 WASM_EXPORT void* composer__new_prover(void* pippenger,
                                        uint8_t const* g2x,
                                        uint8_t const* constraint_system_buf,
