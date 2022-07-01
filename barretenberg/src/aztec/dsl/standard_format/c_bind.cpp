@@ -4,6 +4,7 @@
 #include <plonk/composer/turbo_composer.hpp>
 #include <plonk/proof_system/verification_key/sol_gen.hpp>
 #include "dsl/standard_format/standard_format.hpp"
+#include <plonk/composer/turbo/compute_verification_key.hpp>
 #include <iostream>
 #include <chrono>
 #include <plonk/proof_system/types/polynomial_manifest.hpp>
@@ -20,23 +21,63 @@ using namespace std;
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
-namespace generic_proving_key {
+// This is a generic construction of the wasm bindings for joint_split and
+// account. We take in a constraint_system, as the circuit is not known
+// at compile time
+namespace generic_constraint_system {
+
 static std::shared_ptr<waffle::proving_key> proving_key;
 static std::shared_ptr<waffle::verification_key> verification_key;
+static std::shared_ptr<standard_format> constraint_system;
 
-void init_proving_key(uint8_t const* constraint_system_buf)
+void init_circuit(standard_format cs)
 {
-    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
+    constraint_system = std::make_shared<standard_format>(cs);
+}
+
+void init_proving_key()
+{
     auto crs_factory = std::make_unique<waffle::ReferenceStringFactory>();
-    auto composer = create_circuit(constraint_system, std::move(crs_factory));
+    auto composer = create_circuit(*constraint_system, std::move(crs_factory));
     proving_key = composer.compute_proving_key();
 }
 
-TurboProver new_generic_prover(standard_format constraint_system, std::vector<fr> witness)
+void init_verification_key(std::unique_ptr<waffle::ReferenceStringFactory>&& crs_factory)
+{
+    // This is a problem with barretenberg. We should not need the proving key to compute the
+    // verification key. The proving key also includes the evaluations over a domain of size 4n, where n is the circuit
+    // size, which is not needed.
+    if (!proving_key) {
+        std::abort();
+    }
+    // Patch the 'nothing' reference string fed to init_proving_key.
+    proving_key->reference_string = crs_factory->get_prover_crs(proving_key->n);
+
+    verification_key = waffle::turbo_composer::compute_verification_key(proving_key, crs_factory->get_verifier_crs());
+}
+
+bool verify_proof(waffle::plonk_proof const& proof)
+{
+    TurboVerifier verifier(verification_key, Composer::create_manifest(verification_key->num_public_inputs));
+
+    std::unique_ptr<waffle::KateCommitmentScheme<waffle::turbo_settings>> kate_commitment_scheme =
+        std::make_unique<waffle::KateCommitmentScheme<waffle::turbo_settings>>();
+    verifier.commitment_scheme = std::move(kate_commitment_scheme);
+
+    return verifier.verify_proof(proof);
+}
+
+void init_verification_key(std::shared_ptr<waffle::VerifierMemReferenceString> const& crs,
+                           waffle::verification_key_data&& vk_data)
+{
+    verification_key = std::make_shared<waffle::verification_key>(std::move(vk_data), crs);
+}
+
+TurboProver new_generic_prover(std::vector<fr> witness)
 {
     TurboComposer composer(proving_key, nullptr);
 
-    create_circuit_with_witness(composer, constraint_system, witness);
+    create_circuit_with_witness(composer, *constraint_system, witness);
 
     if (composer.failed) {
         error("composer logic failed: ", composer.err);
@@ -50,14 +91,56 @@ std::shared_ptr<waffle::proving_key> get_proving_key()
     return proving_key;
 }
 
-} // namespace generic_proving_key
+std::shared_ptr<waffle::verification_key> get_verification_key()
+{
+    return verification_key;
+}
 
-using namespace generic_proving_key;
+} // namespace generic_constraint_system
+
+using namespace generic_constraint_system;
 
 extern "C" {
-WASM_EXPORT void composer__compute_proving_key(uint8_t const* constraint_system_buf)
+WASM_EXPORT void composer__compute_proving_key()
 {
-    init_proving_key(constraint_system_buf);
+    init_proving_key();
+}
+
+WASM_EXPORT bool composer__generic_verify_proof(uint8_t* proof, uint32_t length)
+{
+    waffle::plonk_proof pp = { std::vector<uint8_t>(proof, proof + length) };
+    return verify_proof(pp);
+}
+
+WASM_EXPORT void composer__init_verification_key(void* pippenger, uint8_t const* g2x)
+{
+    auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
+        reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
+    init_verification_key(std::move(crs_factory));
+}
+
+WASM_EXPORT void composer__init_circuit_def(uint8_t const* constraint_system_buf)
+{
+    auto cs = from_buffer<standard_format>(constraint_system_buf);
+
+    init_circuit(cs);
+}
+
+WASM_EXPORT uint32_t composer__get_new_verification_key_data(uint8_t** output)
+{
+    auto buffer = to_buffer(*get_verification_key());
+    auto raw_buf = (uint8_t*)malloc(buffer.size());
+    memcpy(raw_buf, (void*)buffer.data(), buffer.size());
+    *output = raw_buf;
+    return static_cast<uint32_t>(buffer.size());
+}
+
+WASM_EXPORT void composer__init_verification_key_from_buffer(uint8_t const* vk_buf, uint8_t const* g2x)
+{
+    auto crs = std::make_shared<waffle::VerifierMemReferenceString>(g2x);
+    waffle::verification_key_data vk_data;
+    read(vk_buf, vk_data);
+    init_verification_key(crs, std::move(vk_data));
 }
 
 WASM_EXPORT uint32_t composer__get_new_proving_key_data(uint8_t** output)
@@ -130,12 +213,11 @@ WASM_EXPORT uint32_t composer__smart_contract(void* pippenger,
     return static_cast<uint32_t>(buffer.size());
 }
 
-WASM_EXPORT void* composer__new_generic_prover(uint8_t const* constraint_system_buf, uint8_t const* witness_buf)
+WASM_EXPORT void* composer__new_generic_prover(uint8_t const* witness_buf)
 {
-    auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
     auto witness = from_buffer<std::vector<fr>>(witness_buf);
 
-    auto prover = new_generic_prover(constraint_system, witness);
+    auto prover = new_generic_prover(witness);
     auto heapProver = new TurboProver(std::move(prover));
 
     return heapProver;
