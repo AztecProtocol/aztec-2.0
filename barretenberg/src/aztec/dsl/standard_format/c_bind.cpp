@@ -10,6 +10,7 @@
 #include <plonk/proof_system/types/polynomial_manifest.hpp>
 #include <plonk/proof_system/commitment_scheme/kate_commitment_scheme.hpp>
 #include <plonk/proof_system/proving_key/serialize.hpp>
+#include "dsl/standard_format/generic_constraint_system.hpp"
 
 typedef std::chrono::high_resolution_clock Clock;
 
@@ -20,83 +21,6 @@ using namespace std;
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wunused-parameter"
-
-// This is a generic construction of the wasm bindings for joint_split and
-// account. We take in a constraint_system, as the circuit is not known
-// at compile time
-namespace generic_constraint_system {
-
-static std::shared_ptr<waffle::proving_key> proving_key;
-static std::shared_ptr<waffle::verification_key> verification_key;
-static std::shared_ptr<standard_format> constraint_system;
-
-void init_circuit(standard_format cs)
-{
-    constraint_system = std::make_shared<standard_format>(cs);
-}
-
-void init_proving_key()
-{
-    auto crs_factory = std::make_unique<waffle::ReferenceStringFactory>();
-    auto composer = create_circuit(*constraint_system, std::move(crs_factory));
-    proving_key = composer.compute_proving_key();
-}
-
-void init_verification_key(std::unique_ptr<waffle::ReferenceStringFactory>&& crs_factory)
-{
-    // This is a problem with barretenberg. We should not need the proving key to compute the
-    // verification key. The proving key also includes the evaluations over a domain of size 4n, where n is the circuit
-    // size, which is not needed.
-    if (!proving_key) {
-        std::abort();
-    }
-    // Patch the 'nothing' reference string fed to init_proving_key.
-    proving_key->reference_string = crs_factory->get_prover_crs(proving_key->n);
-
-    verification_key = waffle::turbo_composer::compute_verification_key(proving_key, crs_factory->get_verifier_crs());
-}
-
-bool verify_proof(waffle::plonk_proof const& proof)
-{
-    TurboVerifier verifier(verification_key, Composer::create_manifest(verification_key->num_public_inputs));
-
-    std::unique_ptr<waffle::KateCommitmentScheme<waffle::turbo_settings>> kate_commitment_scheme =
-        std::make_unique<waffle::KateCommitmentScheme<waffle::turbo_settings>>();
-    verifier.commitment_scheme = std::move(kate_commitment_scheme);
-
-    return verifier.verify_proof(proof);
-}
-
-void init_verification_key(std::shared_ptr<waffle::VerifierMemReferenceString> const& crs,
-                           waffle::verification_key_data&& vk_data)
-{
-    verification_key = std::make_shared<waffle::verification_key>(std::move(vk_data), crs);
-}
-
-TurboProver new_generic_prover(std::vector<fr> witness)
-{
-    TurboComposer composer(proving_key, nullptr);
-
-    create_circuit_with_witness(composer, *constraint_system, witness);
-
-    if (composer.failed) {
-        error("composer logic failed: ", composer.err);
-    }
-
-    return composer.create_prover();
-}
-
-std::shared_ptr<waffle::proving_key> get_proving_key()
-{
-    return proving_key;
-}
-
-std::shared_ptr<waffle::verification_key> get_verification_key()
-{
-    return verification_key;
-}
-
-} // namespace generic_constraint_system
 
 using namespace generic_constraint_system;
 
@@ -229,18 +153,12 @@ WASM_EXPORT void* composer__new_prover(void* pippenger,
 {
     auto constraint_system = from_buffer<standard_format>(constraint_system_buf);
 
-    auto t3 = Clock::now();
     auto crs_factory = std::make_unique<waffle::PippengerReferenceStringFactory>(
         reinterpret_cast<scalar_multiplication::Pippenger*>(pippenger), g2x);
-    auto t4 = Clock::now();
-    info(std::chrono::duration_cast<std::chrono::nanoseconds>(t4 - t3).count());
 
     auto witness = from_buffer<std::vector<fr>>(witness_buf);
 
-    auto t5 = Clock::now();
-    auto composer = create_circuit_with_witness(constraint_system, witness, std::move(crs_factory));
-    auto t6 = Clock::now();
-    logstr(format(std::chrono::duration_cast<std::chrono::nanoseconds>(t6 - t5).count()).c_str());
+    TurboComposer composer(std::move(crs_factory));
 
     auto prover = composer.create_prover();
     auto heapProver = new TurboProver(std::move(prover));
