@@ -119,7 +119,7 @@ TEST(standard_format, sha256_constraint)
         .pedersen_constraints = {},
         .merkle_membership_constraints = {},
         .constraints = eq_constraints,
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     std::vector<fr> witness_values;
@@ -183,7 +183,7 @@ TEST(standard_format, pedersen_constraint)
             .q_o = 1,
             .q_c = -res.x,
         } },
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     // auto res = fr{ 0x108800e84e0f1daf, 0xb9fdf2e4b5b311fd, 0x59b8b08eaf899634, 0xc59cc985b490234b };
@@ -224,7 +224,7 @@ TEST(standard_format, composer_with_public_inputs)
             .q_o = fr::neg_one(),
             .q_c = 0,
         } },
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     auto composer = create_circuit_with_witness(constraint_system, { 1, 2, 3 });
@@ -331,7 +331,7 @@ TEST(standard_format, merkle_membership_constraint)
         .pedersen_constraints = {},
         .merkle_membership_constraints = { merkle_membership_constraint },
         .constraints = {},
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     auto composer = create_circuit_with_witness(constraint_system,
@@ -456,7 +456,7 @@ TEST(standard_format, schnorr_verify_constraint)
             .q_o = 1,
             .q_c = -1,
         } },
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     std::vector<fr> witness_values;
@@ -526,7 +526,7 @@ TEST(standard_format, fixed_base_scalar_mul)
                          }
 
         },
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     std::vector<fr> witness_values;
@@ -685,7 +685,7 @@ TEST(standard_format, ecdsa_verify_constraint)
             .q_o = 1,
             .q_c = -1,
         } },
-        .merkle_insert_constraints = {},
+        // .merkle_insert_constraints = {},
     };
 
     std::vector<fr> witness_values;

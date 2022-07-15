@@ -442,9 +442,9 @@ void create_circuit_with_witness(TurboComposer& composer,
     }
 
     // Add merkle insert constraints
-    for (const auto& constraint : constraint_system.merkle_insert_constraints) {
-        create_merkle_insert_constraint(composer, constraint);
-    }
+    // for (const auto& constraint : constraint_system.merkle_insert_constraints) {
+    //     create_merkle_insert_constraint(composer, constraint);
+    // }
 
     // Add schnorr constraints
     for (const auto& constraint : constraint_system.schnorr_constraints) {
