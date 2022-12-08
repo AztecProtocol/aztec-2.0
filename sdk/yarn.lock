@@ -3150,7 +3150,7 @@ block-stream@*:
     "@nomiclabs/hardhat-etherscan" "^2.1.7"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-blockchain-0.0.0-27c6d94d-ee7c-48dd-af01-e77058a7b342-1636717669805/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
     debug "^4.1.1"
     dotenv "^8.2.0"
@@ -4149,9 +4149,9 @@ decimal.js@^10.2.1:
   integrity sha512-KaL7+6Fw6i5A2XSnsbhm/6B+NuEA7TZ4vqxnd5tXz9sbKtrN9Srj8ab4vKVdK8YAqZO9P1kg45Y6YLoduPf+kw==
 
 decode-uri-component@^0.2.0:
-  version "0.2.0"
-  resolved "https://registry.yarnpkg.com/decode-uri-component/-/decode-uri-component-0.2.0.tgz#eb3913333458775cb84cd1a1fae062106bb87545"
-  integrity sha1-6zkTMzRYd1y4TNGh+uBiEGu4dUU=
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/decode-uri-component/-/decode-uri-component-0.2.2.tgz#e69dbe25d37941171dd540e024c444cd5188e1e9"
+  integrity sha512-FqUYQ+8o158GyGTrMFJms9qh3CqTKvAqgqsTnkLI8sKu0028orqBhxNMFkFen0zGyg6epACD32pjVk58ngIErQ==
 
 deep-equal@~1.0.1:
   version "1.0.1"
@@ -9212,9 +9212,9 @@ srcset@^3.0.0:
   version "1.0.0"
   dependencies:
     "@koa/cors" "^3.0.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/barretenberg.js/dest-es"
+    barretenberg "file:../barretenberg.js/dest-es"
     bigint-buffer "^1.1.5"
-    blockchain "file:../../.cache/yarn/v6/npm-sriracha-1.0.0-aa242bba-433a-466a-9158-5e7b06de8afe-1636717672963/blockchain/dest-es"
+    blockchain "file:../blockchain/dest-es"
     ethers "5.0.29"
     fs-extra "9.0.1"
     koa "^2.7.0"
