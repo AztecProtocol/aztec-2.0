@@ -2115,7 +2115,7 @@ block-stream@*:
     "@nomiclabs/hardhat-etherscan" "^2.1.7"
     "@uniswap/v2-core" "^1.0.1"
     "@uniswap/v2-periphery" "^1.1.0-beta.0"
-    barretenberg "file:../../.cache/yarn/v6/npm-blockchain-0.0.0-5c0f3fed-373e-4e91-8763-1ae7ada796ca-1636717648596/barretenberg.js/dest"
+    barretenberg "file:../barretenberg.js/dest"
     bigint-buffer "^1.1.5"
     debug "^4.1.1"
     dotenv "^8.2.0"
@@ -3665,8 +3665,8 @@ growly@^1.3.0:
 "halloumi@file:../halloumi/dest":
   version "1.0.0"
   dependencies:
-    barretenberg "file:../../.cache/yarn/v6/npm-halloumi-1.0.0-e44faab8-bea5-4118-92b9-bdcfff4848ee-1636717653732/barretenberg.js/dest"
-    blockchain "file:../../.cache/yarn/v6/npm-halloumi-1.0.0-e44faab8-bea5-4118-92b9-bdcfff4848ee-1636717653732/blockchain/dest"
+    barretenberg "file:../barretenberg.js/dest"
+    blockchain "file:../blockchain/dest"
     fs-extra "9.0.1"
     koa "^2.7.0"
     koa-router "^7.4.0"
@@ -5804,9 +5804,9 @@ qs@^6.5.1, qs@^6.5.2:
   integrity sha512-TIRk4aqYLNoJUbd+g2lEdz5kLWIuTMRagAXxl78Q0RiVjAOugHmeKNGdd3cwo/ktpf9aL9epCfFqWDEKysUlLQ==
 
 qs@~6.5.2:
-  version "6.5.2"
-  resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.2.tgz#cb3ae806e8740444584ef154ce8ee98d403f3e36"
-  integrity sha512-N5ZAX4/LxJmF+7wN74pUD6qAh9/wnvdQcjq9TZjevvXzSUo7bfmw91saqMjzGS2xq91/odN2dW/WOl7qQHNDGA==
+  version "6.5.3"
+  resolved "https://registry.yarnpkg.com/qs/-/qs-6.5.3.tgz#3aeeffc91967ef6e35c0e488ef46fb296ab76aad"
+  integrity sha512-qxXIEh4pCGfHICj1mAJQ2/2XVZkjCDTcEgfoSQxc/fYivUZxTkk7L3bDBJSoNrEzXI17oUO5Dp07ktqE5KzczA==
 
 queue-microtask@^1.2.2:
   version "1.2.2"
