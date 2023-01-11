@@ -37,7 +37,7 @@
     "bigint-buffer": "^1.1.5",
     "blockchain": "file:../blockchain/dest",
     "bn.js": "^5.0.0",
-    "class-validator": "^0.12.2",
+    "class-validator": "^0.14.0",
     "dotenv": "^8.2.0",
     "ethers": "5.5.1",
     "fs-extra": "9.0.1",
