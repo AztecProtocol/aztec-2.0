@@ -42,7 +42,7 @@
     "blockchain": "file:../blockchain/dest-es",
     "broadcast-channel": "^3.1.0",
     "detect-node": "^2.0.4",
-    "dexie": "^3.0.1",
+    "dexie": "^3.2.2",
     "ethers": "5.5.1",
     "idb-mutex": "^0.11.0",
     "level-js": "^5.0.2",
